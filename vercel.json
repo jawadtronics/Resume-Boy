@@ -1,34 +1,25 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "views/**",
-          "public/**",
-          "template*.tex",
-          "logo.png",
-          "Favicon.png.avif",
-          "favicon.png.avif",
-          "temp*.png",
-          "node_modules/node-latex-compiler/**",
-          "node_modules/@node-latex-compiler/bin-linux-x64/**"
-        ]
-      }
-    }
-  ],
   "functions": {
-    "server.js": {
+    "api/index.js": {
       "maxDuration": 60,
-      "memory": 1024
+      "includeFiles": [
+        "views/**",
+        "public/**",
+        "template*.tex",
+        "logo.png",
+        "Favicon.png.avif",
+        "favicon.png.avif",
+        "temp*.png",
+        "node_modules/node-latex-compiler/**",
+        "node_modules/@node-latex-compiler/bin-linux-x64/**"
+      ]
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "server.js"
+      "source": "/(.*)",
+      "destination": "/api"
     }
   ]
 }
