@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "views/**",
+          "public/**",
+          "template*.tex",
+          "logo.png",
+          "Favicon.png.avif",
+          "favicon.png.avif",
+          "temp*.png",
+          "node_modules/node-latex-compiler/**",
+          "node_modules/@node-latex-compiler/bin-linux-x64/**"
+        ]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "server.js"
+    }
+  ]
+}

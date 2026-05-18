@@ -2,6 +2,7 @@ const path = require("path");
 const crypto = require("crypto");
 const os = require("os");
 const fs = require("fs/promises");
+const nodeFs = require("fs");
 const { execFile } = require("child_process");
 const express = require("express");
 const multer = require("multer");
@@ -9,6 +10,7 @@ const mammoth = require("mammoth");
 const { PDFParse } = require("pdf-parse");
 const { createClient } = require("@supabase/supabase-js");
 const Safepay = require("@sfpy/node-core");
+const { platformResolver: latexPlatformResolver } = require("node-latex-compiler");
 
 require("dotenv").config();
 
@@ -20,7 +22,6 @@ const apifyLinkedInUrl = process.env.APIFY_LINKEDIN_SCRAPER_URL;
 const apifyLinkedInJobUrl = process.env.APIFY_LINKEDIN_JOB_URL || buildDefaultLinkedInJobUrl();
 const geminiApiKey = process.env.GEMINI_API_KEY;
 const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const latexCompilerUrl = process.env.LATEX_COMPILER_URL;
 const latexCompileTimeoutMs = Number(process.env.LATEX_COMPILE_TIMEOUT_MS || 30000);
 const safepaySecretKey = process.env.SAFEPAY_SECRET_KEY;
 const safepayPublicKey = process.env.SAFEPAY_PUBLIC_KEY;
@@ -924,19 +925,23 @@ app.post("/onboarding", upload.single("cv_file"), async (req, res) => {
   }
 });
 
-const server = app.listen(port, () => {
-  console.log(`Resume Boy login app running at http://localhost:${port}`);
-});
+if (require.main === module) {
+  const server = app.listen(port, () => {
+    console.log(`Resume Boy login app running at http://localhost:${port}`);
+  });
 
-server.on("error", (error) => {
-  if (error.code === "EADDRINUSE") {
-    console.error(`Port ${port} is already in use.`);
-    console.error(`Stop the other server or run this app with another port, for example: PORT=3001 npm start`);
-    process.exit(1);
-  }
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      console.error(`Port ${port} is already in use.`);
+      console.error(`Stop the other server or run this app with another port, for example: PORT=3001 npm start`);
+      process.exit(1);
+    }
 
-  throw error;
-});
+    throw error;
+  });
+}
+
+module.exports = app;
 
 function escapeHtml(value) {
   return String(value)
@@ -1893,16 +1898,12 @@ function normalizeTemplateId(value) {
 }
 
 async function compileLatexToPdf(latex) {
-  if (latexCompilerUrl) {
-    return compileLatexWithService(latex);
-  }
-
   const compiler = await findLatexCompiler();
   if (!compiler) {
     const error = new Error("No local LaTeX compiler was found.");
     error.statusCode = 501;
-    error.publicMessage = "No local LaTeX compiler was found. Install tectonic/pdflatex or configure LATEX_COMPILER_URL.";
-    error.compileLog = "Expected one of: tectonic, pdflatex.";
+    error.publicMessage = "No local LaTeX compiler was found.";
+    error.compileLog = "Expected bundled Tectonic from node-latex-compiler, system tectonic, or pdflatex.";
     throw error;
   }
 
@@ -1945,48 +1946,22 @@ async function compileLatexToPdf(latex) {
   }
 }
 
-async function compileLatexWithService(latex) {
-  const response = await fetch(latexCompilerUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/pdf, application/json",
-    },
-    body: JSON.stringify({ latex }),
-  });
-
-  const contentType = response.headers.get("content-type") || "";
-  const body = Buffer.from(await response.arrayBuffer());
-
-  if (!response.ok) {
-    const error = new Error("Remote LaTeX compiler failed.");
-    error.statusCode = response.status;
-    error.publicMessage = "Remote LaTeX compiler failed.";
-    error.compileLog = contentType.includes("application/json")
-      ? JSON.stringify(parseJsonOrThrow(body.toString("utf8"), "LaTeX compiler service error"), null, 2)
-      : body.toString("utf8");
-    throw error;
-  }
-
-  if (!contentType.includes("application/pdf")) {
-    const error = new Error("Remote compiler did not return a PDF.");
-    error.statusCode = 502;
-    error.publicMessage = "Remote compiler did not return a PDF.";
-    error.compileLog = body.toString("utf8").slice(0, 4000);
-    throw error;
-  }
-
-  return body;
-}
-
 async function findLatexCompiler() {
+  const bundledTectonic = latexPlatformResolver.resolveTectonicExecutable({});
   const candidates = [
+    bundledTectonic
+      ? { command: bundledTectonic, args: ["--untrusted", "--print", "--keep-logs", "--keep-intermediates", "main.tex"], source: "bundled-tectonic" }
+      : null,
     { command: "tectonic", args: ["--untrusted", "--print", "--keep-logs", "--keep-intermediates", "main.tex"] },
     { command: "pdflatex", args: ["-interaction=nonstopmode", "-halt-on-error", "-file-line-error", "main.tex"] },
-  ];
+  ].filter(Boolean);
 
   for (const candidate of candidates) {
     if (await commandExists(candidate.command)) {
+      console.info("[latex] Using compiler", {
+        command: candidate.command,
+        source: candidate.source || "system",
+      });
       return candidate;
     }
   }
@@ -1996,6 +1971,13 @@ async function findLatexCompiler() {
 
 function commandExists(command) {
   return new Promise((resolve) => {
+    if (path.isAbsolute(command)) {
+      fs.access(command, nodeFs.constants.X_OK)
+        .then(() => resolve(true))
+        .catch(() => resolve(false));
+      return;
+    }
+
     execFile("which", [command], { timeout: 2000 }, (error) => {
       resolve(!error);
     });
@@ -2009,6 +1991,10 @@ function runLatexCompiler(compiler, cwd) {
       compiler.args,
       {
         cwd,
+        env: {
+          ...process.env,
+          XDG_CACHE_HOME: path.join(os.tmpdir(), "resmaker-tectonic-cache"),
+        },
         timeout: latexCompileTimeoutMs,
         maxBuffer: 1024 * 1024 * 8,
       },

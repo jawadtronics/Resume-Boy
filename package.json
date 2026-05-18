@@ -14,6 +14,7 @@
     "express": "^4.19.2",
     "mammoth": "^1.12.0",
     "multer": "^2.0.2",
+    "node-latex-compiler": "^1.0.5",
     "pdf-parse": "^2.4.5",
     "qs": "^6.15.2"
   },
