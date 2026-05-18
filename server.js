@@ -7,7 +7,6 @@ const { execFile } = require("child_process");
 const express = require("express");
 const multer = require("multer");
 const mammoth = require("mammoth");
-const { PDFParse } = require("pdf-parse");
 const { createClient } = require("@supabase/supabase-js");
 const Safepay = require("@sfpy/node-core");
 const { platformResolver: latexPlatformResolver } = require("node-latex-compiler");
@@ -37,6 +36,7 @@ const upload = multer({
 });
 
 const PROFILE_SELECT = "id, name, email, job, cv_details, profile_details, onboarding_status, plan_id, billing_period, credits_used, credits_remaining, plan_started_at, plan_renews_at, plan_selection_required";
+let PDFParseClass;
 
 const PLACEHOLDER_JPEG_BASE64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAH/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAEFAqf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/ASP/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/ASP/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAY/Al//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/IV//2gAMAwEAAgADAAAAEP/EFBQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQMBAT8QH//EFBQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQIBAT8QH//EFBABAQAAAAAAAAAAAAAAAAAAARD/2gAIAQEAAT8QH//Z";
 
@@ -2480,6 +2480,7 @@ async function extractCvText(file) {
   const mimeType = file.mimetype || "";
 
   if (mimeType === "application/pdf" || name.endsWith(".pdf")) {
+    const PDFParse = getPdfParser();
     const parser = new PDFParse({ data: file.buffer });
     try {
       const result = await parser.getText();
@@ -2502,6 +2503,25 @@ async function extractCvText(file) {
   }
 
   return "";
+}
+
+function getPdfParser() {
+  if (PDFParseClass) {
+    return PDFParseClass;
+  }
+
+  try {
+    ({ PDFParse: PDFParseClass } = require("pdf-parse"));
+    return PDFParseClass;
+  } catch (error) {
+    console.error("[cv] PDF parser failed to load", {
+      message: error.message,
+      stack: error.stack,
+    });
+    const wrapped = new Error("PDF parsing is unavailable in this runtime. Please upload a DOCX/TXT CV or try again later.");
+    wrapped.cause = error;
+    throw wrapped;
+  }
 }
 
 async function buildProfileDetailsBlock({ jobs, sourcePayload }) {
