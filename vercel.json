@@ -3,20 +3,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
-      "includeFiles": [
-        "views/**",
-        "public/**",
-        "template*.tex",
-        "logo.png",
-        "Favicon.png.avif",
-        "favicon.png.avif",
-        "temp*.png",
-        "node_modules/node-latex-compiler/**",
-        "node_modules/@node-latex-compiler/bin-linux-x64/**",
-        "node_modules/pdf-parse/**",
-        "node_modules/pdfjs-dist/**",
-        "node_modules/@napi-rs/canvas*/**"
-      ]
+      "includeFiles": "{views/**,public/**,template*.tex,*.png,logo.png,Favicon.png.avif,node_modules/{pdf-parse,pdfjs-dist,@napi-rs/canvas*,node-latex-compiler}/**}"
     }
   },
   "rewrites": [
