@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Boy - Login</title>
+    <meta name="description" content="Resume Boy is an AI powered resume generator for AI powered personalized job matching and personalize resume generator workflows.">
+    <meta name="keywords" content="AI powered resume generator, AI powered personalized job, personalize resume generator, ATS resume generator">
+    <link rel="icon" type="image/avif" href="/favicon.png.avif">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="login-shell">
+      <main class="login-panel" aria-labelledby="login-title">
+        <header class="topbar">
+          <a class="brand" href="/" aria-label="Resume Boy home">
+            <img class="brand-logo" src="/logo.png" alt="" aria-hidden="true">
+          </a>
+        </header>
+
+        <section class="login-card">
+          <h1 id="login-title">Log into your account</h1>
+
+          <form class="email-form" action="/login" method="post">
+            <input id="mode" name="mode" type="hidden" value="login">
+
+            <div class="signup-field" hidden>
+              <label for="name">Name</label>
+              <input id="name" name="name" type="text" autocomplete="name" placeholder="Your name">
+            </div>
+
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+
+            <div class="signup-field" hidden>
+              <label for="confirm-password">Confirm password</label>
+              <input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" placeholder="Enter your password again">
+            </div>
+
+            <div class="form-row">
+              <label class="check-label" for="remember">
+                <input id="remember" name="remember" type="checkbox">
+                Remember me
+              </label>
+              <a href="#">Forgot password?</a>
+            </div>
+
+            <button id="submit-button" class="button button-primary" type="submit">Login</button>
+          </form>
+
+          <p class="signup-copy">
+            <span id="toggle-copy">Don't have an account?</span>
+            <button id="toggle-mode" class="text-button" type="button">Sign up</button>
+          </p>
+        </section>
+
+        <footer class="legal-copy">
+          By continuing, you agree to Resume Boy's
+          <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        </footer>
+      </main>
+
+      <aside class="art-panel" aria-label="Minimal abstract artwork">
+        <div class="art-image"></div>
+        <div class="art-gradient"></div>
+        <svg class="art-mark" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="44"></circle>
+          <path d="M10 88 Q50 12 90 88"></path>
+        </svg>
+      </aside>
+    </div>
+    <script src="/login.js"></script>
+  </body>
+</html>

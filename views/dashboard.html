@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Boy - Dashboard</title>
+    <meta name="description" content="Resume Boy is an AI powered resume generator for AI powered personalized job matching and personalize resume generator workflows.">
+    <meta name="keywords" content="AI powered resume generator, AI powered personalized job, personalize resume generator, ATS resume generator">
+    <link rel="icon" type="image/avif" href="/favicon.png.avif">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="dashboard-page">
+    <div class="dashboard-grid-bg" aria-hidden="true"></div>
+
+    <header class="dashboard-header">
+      <a class="dashboard-brand" href="/app" aria-label="Resume Boy dashboard">
+        <img class="brand-logo" src="/logo.png" alt="" aria-hidden="true">
+      </a>
+
+      <nav class="dashboard-nav" aria-label="Dashboard navigation">
+        <a class="is-active" href="/app">Playground</a>
+        <a href="/history">History</a>
+        <a href="/profile">Profile</a>
+      </nav>
+
+      <form action="/logout" method="post">
+        <button class="logout-button" type="submit">Log out</button>
+      </form>
+    </header>
+
+    <main class="dashboard-main">
+      <section class="resume-flow" aria-labelledby="dashboard-title">
+        <div class="flow-copy">
+          <h1 id="dashboard-title">Generate ATS-Friendly Resume<br><span>(under 10 seconds)</span></h1>
+        </div>
+
+        <form id="resume-flow-form" class="flow-card" action="/editor" method="post">
+          <input id="selected-source" name="job_source" type="hidden">
+          <input id="selected-template" name="template" type="hidden">
+
+          <div class="flow-progress" aria-label="Resume generation steps">
+            <span class="is-active" data-progress="0">Step 1</span>
+            <i></i>
+            <span data-progress="1">Step 2</span>
+            <i></i>
+            <span data-progress="2">Step 3</span>
+          </div>
+
+          <section class="flow-step is-active" data-step="0" aria-labelledby="source-title">
+            <p class="flow-eyebrow">Step 1</p>
+            <h2 id="source-title">How should we read the job?</h2>
+            <p>Choose the source first. Templates unlock after the job details are ready.</p>
+
+            <div class="source-choice-grid">
+              <button class="source-choice" type="button" data-source="linkedin_url">
+                <span class="material-symbols-outlined" aria-hidden="true">link</span>
+                <strong>LinkedIn job</strong>
+                <small>Paste one public LinkedIn job link.</small>
+              </button>
+
+              <button class="source-choice" type="button" data-source="description">
+                <span class="material-symbols-outlined" aria-hidden="true">notes</span>
+                <strong>Text job description</strong>
+                <small>Paste the full description text.</small>
+              </button>
+            </div>
+
+            <div class="flow-actions">
+              <button id="source-next" class="button button-primary flow-button" type="button" disabled>Continue</button>
+            </div>
+          </section>
+
+          <section class="flow-step" data-step="1" aria-labelledby="job-details-title">
+            <p class="flow-eyebrow">Step 2</p>
+            <h2 id="job-details-title">Add the job details</h2>
+            <p id="job-hint">Paste the information from the source you chose.</p>
+
+            <label class="sr-only" for="job-input">Job input</label>
+            <textarea id="job-input" name="job_input" placeholder="Choose an input option first"></textarea>
+
+            <div class="flow-actions split-actions">
+              <button class="button button-secondary flow-button" type="button" data-back>Back</button>
+              <button id="details-next" class="button button-primary flow-button" type="button" disabled>Send</button>
+            </div>
+          </section>
+
+          <section class="flow-step" data-step="2" aria-labelledby="templates-title">
+            <div class="template-heading">
+              <div>
+                <p class="flow-eyebrow">Step 3</p>
+                <h2 id="templates-title">Choose a template</h2>
+              </div>
+              <span>(3)</span>
+            </div>
+
+            <p class="template-lock-copy" id="template-lock-copy">Send the job details first, then choose a template.</p>
+
+            <div class="template-grid" aria-label="Resume templates">
+              <button class="template-card" type="button" data-template="template1" disabled>
+                <img src="/temp1.png" alt="Template 1 preview">
+                <span>Template 1</span>
+              </button>
+
+              <button class="template-card" type="button" data-template="template2" disabled>
+                <img src="/temp2.png" alt="Template 2 preview">
+                <span>Template 2</span>
+              </button>
+
+              <button class="template-card" type="button" data-template="template3" disabled>
+                <img src="/temp3.png" alt="Template 3 preview">
+                <span>Template 3</span>
+              </button>
+            </div>
+
+            <div class="flow-actions split-actions">
+              <button class="button button-secondary flow-button" type="button" data-back>Back</button>
+              <button id="start-button" class="button button-primary flow-button" type="submit" disabled>Start</button>
+            </div>
+          </section>
+        </form>
+      </section>
+    </main>
+
+    <div id="resume-loading" class="loading-overlay resume-loading" aria-hidden="true">
+      <div class="loader-ring" aria-hidden="true"><span></span></div>
+      <h2>Writing your resume</h2>
+      <p>Matching your profile, job requirements, and selected LaTeX template.</p>
+    </div>
+
+    <div id="credits-popup" class="credits-popup" hidden>
+      <div class="credits-dialog" role="dialog" aria-modal="true" aria-labelledby="credits-title">
+        <p class="flow-eyebrow">Plan exhausted</p>
+        <h2 id="credits-title">You have used all free credits.</h2>
+        <p>Upgrade to keep generating personalized ATS resumes.</p>
+        <div class="credits-actions">
+          <button class="button button-primary" type="button" data-plan-upgrade="standard">Upgrade Standard</button>
+          <button class="button button-secondary" type="button" data-plan-upgrade="elite">Upgrade Elite</button>
+        </div>
+        <small id="credits-state" aria-live="polite"></small>
+      </div>
+    </div>
+
+    <script src="/dashboard.js"></script>
+  </body>
+</html>

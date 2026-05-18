@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Boy - Profile</title>
+    <meta name="description" content="Resume Boy is an AI powered resume generator for AI powered personalized job matching and personalize resume generator workflows.">
+    <meta name="keywords" content="AI powered resume generator, AI powered personalized job, personalize resume generator, ATS resume generator">
+    <link rel="icon" type="image/avif" href="/favicon.png.avif">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="profile-page">
+    <div class="dashboard-grid-bg" aria-hidden="true"></div>
+
+    <header class="dashboard-header profile-header">
+      <a class="dashboard-brand" href="/app" aria-label="Resume Boy dashboard">
+        <img class="brand-logo" src="/logo.png" alt="" aria-hidden="true">
+      </a>
+
+      <nav class="dashboard-nav" aria-label="Dashboard navigation">
+        <a href="/app">Playground</a>
+        <a href="/history">History</a>
+        <a class="is-active" href="/profile">Profile</a>
+      </nav>
+
+      <form action="/logout" method="post">
+        <button class="logout-button" type="submit">Log out</button>
+      </form>
+    </header>
+
+    <main class="profile-main">
+      <section class="profile-hero" aria-labelledby="profile-title">
+        <div class="profile-avatar" aria-hidden="true">
+          <span id="profile-initials">R</span>
+        </div>
+        <div class="profile-identity">
+          <input id="profile-name" aria-label="Full name" type="text" value="Loading...">
+          <p id="profile-email">Loading account...</p>
+        </div>
+      </section>
+
+      <section class="profile-description-panel" aria-labelledby="profile-description-title">
+        <div>
+          <p class="dashboard-kicker">Profile description</p>
+          <h2 id="profile-description-title">What we know about you</h2>
+          <p>This is the profile context Resume Boy uses when tailoring your resumes.</p>
+        </div>
+        <label class="sr-only" for="profile-description">Profile description - what we know about you</label>
+        <textarea id="profile-description" spellcheck="true" placeholder="Your profile details will appear here after onboarding."></textarea>
+      </section>
+
+      <section class="profile-stats" aria-label="Account stats">
+        <article class="profile-stat-card">
+          <span>Total Generations</span>
+          <strong id="total-generations">0</strong>
+        </article>
+        <article class="profile-stat-card">
+          <span>Left Credits</span>
+          <strong id="left-credits">0</strong>
+        </article>
+        <article class="profile-stat-card">
+          <span>Current Plan</span>
+          <strong id="current-plan">Free</strong>
+        </article>
+      </section>
+
+      <section class="plan-manager" aria-labelledby="plans-title">
+        <div class="plan-heading">
+          <p class="dashboard-kicker">Current year billing</p>
+          <h1 id="plans-title">Subscription Plan Manager</h1>
+          <p>Choose the plan that fits your resume generation workflow. Payments will be connected in the next step.</p>
+        </div>
+
+        <div id="plans-grid" class="plans-grid"></div>
+      </section>
+
+      <section class="profile-actions" aria-label="Profile actions">
+        <button id="save-profile" class="button button-primary" type="button">Save Changes</button>
+        <a class="button button-secondary" href="/app">Cancel</a>
+        <span id="profile-save-state" aria-live="polite"></span>
+      </section>
+    </main>
+
+    <template id="plan-card-template">
+      <article class="plan-card">
+        <div class="plan-card-top">
+          <div>
+            <h2></h2>
+            <p class="plan-subtitle"></p>
+          </div>
+          <span class="plan-badge"></span>
+        </div>
+        <div class="plan-price"></div>
+        <ul class="plan-features"></ul>
+        <button class="plan-button" type="button"></button>
+      </article>
+    </template>
+
+    <script src="/profile.js"></script>
+  </body>
+</html>

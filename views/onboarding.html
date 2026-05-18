@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Boy - Onboarding</title>
+    <meta name="description" content="Resume Boy is an AI powered resume generator for AI powered personalized job matching and personalize resume generator workflows.">
+    <meta name="keywords" content="AI powered resume generator, AI powered personalized job, personalize resume generator, ATS resume generator">
+    <link rel="icon" type="image/avif" href="/favicon.png.avif">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="onboarding-page">
+    <main class="onboarding-shell">
+      <form class="typeform-card" action="/onboarding" method="post" enctype="multipart/form-data">
+        <input id="job-items" name="job_items" type="hidden" value="[]">
+
+        <section class="type-step is-active" data-step="1" aria-labelledby="job-title">
+          <div class="step-kicker">
+            <span>1</span>
+            <i></i>
+          </div>
+          <h1 id="job-title">What is your job, job niche, or talent niche?</h1>
+          <p>Add as many roles, skills, industries, or specialties as you want.</p>
+
+          <div class="tag-entry">
+            <input id="job-input" type="text" autocomplete="off" placeholder="e.g. Product designer, fintech, resume writing">
+            <button class="button button-secondary compact-button" type="button" id="add-job">Add</button>
+          </div>
+          <div id="job-tags" class="tag-list" aria-live="polite"></div>
+
+          <div class="type-actions">
+            <button class="button button-primary" type="button" data-next>OK</button>
+            <span>Press Enter</span>
+          </div>
+        </section>
+
+        <section class="type-step" data-step="2" aria-labelledby="cv-title">
+          <div class="step-kicker">
+            <span>2</span>
+            <i></i>
+          </div>
+          <h1 id="cv-title">Upload your CV or share your LinkedIn profile.</h1>
+          <p>Choose one option so we can tailor the experience to your background.</p>
+
+          <div class="choice-grid">
+            <label class="choice-card">
+              <input type="radio" name="source_type" value="cv" checked>
+              <strong>Upload CV</strong>
+              <span>PDF, DOC, or DOCX up to 10MB.</span>
+            </label>
+            <label class="choice-card">
+              <input type="radio" name="source_type" value="linkedin">
+              <strong>LinkedIn URL</strong>
+              <span>Paste a public profile link.</span>
+            </label>
+          </div>
+
+          <div class="source-panel" data-source="cv">
+            <label for="cv-file">CV file</label>
+            <input id="cv-file" name="cv_file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+          </div>
+
+          <div class="source-panel" data-source="linkedin" hidden>
+            <label for="linkedin-url">LinkedIn profile</label>
+            <input id="linkedin-url" name="linkedin_url" type="url" placeholder="https://www.linkedin.com/in/your-name">
+          </div>
+
+          <div class="type-actions split-actions">
+            <button class="button button-secondary compact-button" type="button" data-back>Back</button>
+            <button class="button button-primary compact-button" type="submit">Finish</button>
+          </div>
+        </section>
+      </form>
+      <section class="loading-overlay" aria-live="polite" aria-hidden="true">
+        <div class="loader-ring">
+          <span></span>
+        </div>
+        <h2>Preparing your experience...</h2>
+        <p>Reading your profile and shaping the details.</p>
+      </section>
+    </main>
+    <script src="/onboarding.js"></script>
+  </body>
+</html>

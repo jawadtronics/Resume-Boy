@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Boy - LaTeX Editor</title>
+    <meta name="description" content="Resume Boy is an AI powered resume generator for AI powered personalized job matching and personalize resume generator workflows.">
+    <meta name="keywords" content="AI powered resume generator, AI powered personalized job, personalize resume generator, ATS resume generator">
+    <link rel="icon" type="image/avif" href="/favicon.png.avif">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/eclipse.min.css">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="editor-page">
+    <main class="editor-shell">
+      <section class="editor-pane code-pane" aria-label="LaTeX editor">
+        <div class="pane-header">
+          <div>
+            <p class="eyebrow">Source</p>
+            <h1>LaTeX editor</h1>
+          </div>
+        </div>
+        <textarea id="latex-source" spellcheck="false"></textarea>
+      </section>
+
+      <section class="editor-pane preview-pane" aria-label="PDF preview">
+        <div class="pane-header">
+          <div>
+            <p class="eyebrow">Preview</p>
+            <h1>Compiled PDF</h1>
+          </div>
+        </div>
+        <div id="pdf-preview-wrap" class="pdf-preview-wrap">
+          <iframe id="pdf-preview" title="Compiled resume PDF preview"></iframe>
+          <div id="empty-preview" class="empty-preview">
+            <p>Compile your resume to preview the PDF here.</p>
+          </div>
+        </div>
+        <details id="compile-log-panel" class="compile-log-panel editor-hidden-log">
+          <summary>Compile log</summary>
+          <pre id="compile-log"></pre>
+        </details>
+      </section>
+    </main>
+
+    <nav class="editor-floating-bar" aria-label="Editor status and actions">
+      <div class="editor-live-status">
+        <span id="compile-status">Waiting</span>
+        <span id="autosave-status">Saved</span>
+      </div>
+      <div class="editor-floating-actions">
+        <button id="download-button" class="editor-button primary" type="button" disabled>Download</button>
+        <button id="next-button" class="editor-button secondary" type="button">Done</button>
+      </div>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/stex/stex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="/editor.js"></script>
+  </body>
+</html>

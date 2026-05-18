@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Boy - History</title>
+    <meta name="description" content="Resume Boy is an AI powered resume generator for AI powered personalized job matching and personalize resume generator workflows.">
+    <meta name="keywords" content="AI powered resume generator, AI powered personalized job, personalize resume generator, ATS resume generator">
+    <link rel="icon" type="image/avif" href="/favicon.png.avif">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="history-page">
+    <div class="dashboard-grid-bg" aria-hidden="true"></div>
+
+    <header class="dashboard-header history-header">
+      <a class="dashboard-brand" href="/app" aria-label="Resume Boy dashboard">
+        <img class="brand-logo" src="/logo.png" alt="" aria-hidden="true">
+      </a>
+
+      <nav class="dashboard-nav" aria-label="Dashboard navigation">
+        <a href="/app">Playground</a>
+        <a class="is-active" href="/history">History</a>
+        <a href="/profile">Profile</a>
+      </nav>
+
+      <form action="/logout" method="post">
+        <button class="logout-button" type="submit">Log out</button>
+      </form>
+    </header>
+
+    <main class="history-main">
+      <section class="history-intro">
+        <p class="dashboard-kicker">Generation board</p>
+        <h1>History</h1>
+        <p>Every resume draft, job input, LaTeX source, and saved PDF appears here.</p>
+      </section>
+
+      <section id="history-shell" class="history-shell" aria-live="polite">
+        <div class="history-list-panel">
+          <div class="history-list-top">
+            <span id="history-count">0 generations</span>
+            <a class="history-new-link" href="/app">Add Resume</a>
+          </div>
+          <div id="history-list" class="history-list"></div>
+        </div>
+
+      </section>
+    </main>
+
+    <template id="history-row-template">
+      <button class="history-row" type="button">
+        <span class="history-row-index"></span>
+        <span>
+          <strong class="history-row-title"></strong>
+          <small class="history-row-meta"></small>
+        </span>
+        <i class="history-open-label">Open Editor</i>
+      </button>
+    </template>
+
+    <script src="/history.js"></script>
+  </body>
+</html>
