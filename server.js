@@ -176,9 +176,13 @@ app.get("/app", async (req, res) => {
   return res.sendFile(path.join(__dirname, "views", "dashboard.html"));
 });
 
+app.post("/app", (_req, res) => {
+  return res.redirect(303, "/app");
+});
+
 app.post("/logout", (_req, res) => {
   clearAuthCookies(res);
-  res.redirect("/login");
+  res.redirect(303, "/login");
 });
 
 app.get("/logout", (_req, res) => {
@@ -746,7 +750,7 @@ app.post("/login", async (req, res) => {
 
     if (data.session) {
       setAuthCookies(res, data.session);
-      return res.redirect("/onboarding");
+      return res.redirect(303, "/onboarding");
     }
 
     return renderMessage(res, {
@@ -769,10 +773,10 @@ app.post("/login", async (req, res) => {
   const profile = await getProfile(data.user, data.session.access_token);
 
   if (profile?.onboarding_status !== false) {
-    return res.redirect("/onboarding");
+    return res.redirect(303, "/onboarding");
   }
 
-  return res.redirect("/app");
+  return res.redirect(303, "/app");
 });
 
 app.get("/onboarding", async (req, res) => {
