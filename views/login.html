@@ -49,7 +49,7 @@
                 <input id="remember" name="remember" type="checkbox">
                 Remember me
               </label>
-              <a href="#">Forgot password?</a>
+              <button id="forgot-password" class="text-button" type="button">Forget Password?</button>
             </div>
 
             <button id="submit-button" class="button button-primary" type="submit">Login</button>
@@ -75,6 +75,36 @@
           <path d="M10 88 Q50 12 90 88"></path>
         </svg>
       </aside>
+    </div>
+
+    <div id="password-reset-modal" class="auth-modal" hidden>
+      <div class="auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="password-reset-title">
+        <button id="password-reset-close" class="auth-modal-close" type="button" aria-label="Close password reset">×</button>
+        <p class="modal-eyebrow">Password help</p>
+        <h2 id="password-reset-title">Reset your password</h2>
+        <p id="password-reset-copy">Enter your account email and we will send a short verification code.</p>
+
+        <form id="password-reset-form" class="password-reset-form">
+          <div id="password-reset-email-step" class="password-reset-step">
+            <label for="password-reset-email">Email address</label>
+            <input id="password-reset-email" name="reset_email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </div>
+
+          <div id="password-reset-code-step" class="password-reset-step" hidden>
+            <label for="password-reset-code">Verification code</label>
+            <input id="password-reset-code" name="reset_code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter the code" disabled>
+
+            <label for="password-reset-new">New password</label>
+            <input id="password-reset-new" name="reset_password" type="password" autocomplete="new-password" placeholder="New password" disabled>
+
+            <label for="password-reset-confirm">Confirm new password</label>
+            <input id="password-reset-confirm" name="reset_confirm" type="password" autocomplete="new-password" placeholder="Confirm new password" disabled>
+          </div>
+
+          <button id="password-reset-submit" class="button button-primary" type="submit">Next</button>
+          <p id="password-reset-state" class="password-reset-state" role="status" aria-live="polite"></p>
+        </form>
+      </div>
     </div>
     <script src="/login.js"></script>
   </body>

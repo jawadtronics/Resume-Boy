@@ -69,8 +69,9 @@ function renderPlans(plans, currentPlanId) {
     });
 
     const button = card.querySelector(".plan-button");
-    button.textContent = isCurrent ? "Current Plan" : isDowngrade ? "Downgrade unavailable" : Number(plan.price_cents || 0) === 0 ? "Activate Free" : "Upgrade";
+    button.textContent = isCurrent ? "Current Plan" : Number(plan.price_cents || 0) === 0 ? "Activate Free" : "Upgrade";
     button.disabled = isCurrent || isDowngrade;
+    button.hidden = isDowngrade;
     if (!isCurrent && !isDowngrade) {
       button.addEventListener("click", () => selectPlan(plan.id, button));
     }

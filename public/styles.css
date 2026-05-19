@@ -105,16 +105,16 @@ textarea {
 }
 
 .brand-logo {
-  width: 72px;
-  height: 72px;
+  width: 88px;
+  height: 88px;
   flex: 0 0 auto;
   object-fit: contain;
 }
 
 .dashboard-brand .brand-logo,
 .editor-brand .brand-logo {
-  width: 78px;
-  height: 78px;
+  width: 98px;
+  height: 98px;
   filter: none;
 }
 
@@ -291,6 +291,122 @@ a:focus-visible {
 
 .text-button:hover {
   text-decoration: underline;
+}
+
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 15, 18, 0.34);
+  backdrop-filter: blur(18px);
+}
+
+.auth-modal[hidden] {
+  display: none;
+}
+
+.auth-modal-card {
+  position: relative;
+  width: min(100%, 440px);
+  padding: 32px;
+  border: 1px solid rgba(207, 196, 197, 0.7);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 30px 90px rgba(10, 15, 18, 0.18);
+  animation: premium-enter 360ms ease both;
+}
+
+.auth-modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(207, 196, 197, 0.82);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.modal-eyebrow {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-modal-card h2 {
+  margin: 0 0 10px;
+  color: var(--primary);
+  font-size: 32px;
+  line-height: 1.05;
+}
+
+.auth-modal-card > p:not(.modal-eyebrow),
+.password-reset-state {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.password-reset-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.password-reset-step {
+  display: grid;
+  gap: 14px;
+}
+
+.password-reset-step[hidden] {
+  display: none;
+}
+
+.password-reset-step label {
+  margin-bottom: -6px;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.password-reset-step input {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--text);
+}
+
+.password-reset-step input:focus {
+  border-color: var(--primary);
+}
+
+.password-reset-state {
+  min-height: 20px;
+  margin: -2px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.password-reset-state[data-tone="error"] {
+  color: #93000a;
+}
+
+.password-reset-state[data-tone="success"] {
+  color: #147a45;
 }
 
 .legal-copy {

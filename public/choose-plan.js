@@ -15,7 +15,9 @@ async function loadPlans() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "Could not load plans.");
 
-    renderPlans(payload.plans || [], payload.profile?.plan_id || "free");
+    const profile = payload.profile || {};
+    const currentPlanId = profile.plan_selection_required ? "" : profile.plan_id || "free";
+    renderPlans(payload.plans || [], currentPlanId);
   } catch (error) {
     console.error("[choose-plan] Load failed", error);
     plansGrid.innerHTML = `<div class="choose-plan-loading is-error">${escapeHtml(error.message)}</div>`;
@@ -24,7 +26,7 @@ async function loadPlans() {
 
 function renderPlans(plans, currentPlanId) {
   plansGrid.innerHTML = "";
-  const currentRank = planRank(currentPlanId);
+  const currentRank = currentPlanId ? planRank(currentPlanId) : -1;
 
   plans.forEach((plan) => {
     const card = planTemplate.content.firstElementChild.cloneNode(true);
@@ -42,8 +44,9 @@ function renderPlans(plans, currentPlanId) {
 
     const button = card.querySelector("button");
     const isDowngrade = planRank(plan.id) < currentRank;
-    button.textContent = plan.id === currentPlanId ? "Current Plan" : isDowngrade ? "Downgrade unavailable" : Number(plan.price_cents || 0) === 0 ? "Start Free" : "Upgrade";
+    button.textContent = plan.id === currentPlanId ? "Current Plan" : Number(plan.price_cents || 0) === 0 ? "Choose Free" : `Choose ${plan.name}`;
     button.disabled = plan.id === currentPlanId || isDowngrade;
+    button.hidden = isDowngrade;
     if (!button.disabled) {
       button.addEventListener("click", () => selectPlan(plan.id, button));
     }
@@ -88,9 +91,7 @@ async function selectPlan(planId, button) {
   } catch (error) {
     console.error("[choose-plan] Selection failed", { selectedPlan, error });
     stateNode.textContent = error.message;
-    document.querySelectorAll(".choose-plan-card button").forEach((planButton) => {
-      planButton.disabled = false;
-    });
+    loadPlans();
     if (button) button.focus();
   }
 }
@@ -109,7 +110,7 @@ function priceHtml(plan) {
 }
 
 function planRank(planId) {
-  return { free: 0, standard: 1, elite: 2 }[planId] || 0;
+  return { free: 0, standard: 1, elite: 2 }[planId] ?? 0;
 }
 
 function escapeHtml(value) {

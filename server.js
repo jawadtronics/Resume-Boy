@@ -338,6 +338,94 @@ app.post("/api/plan/select", async (req, res) => {
   }
 });
 
+app.post("/api/auth/password-reset/start", async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase is not configured yet." });
+    }
+
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ error: "Enter a valid email address." });
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+      },
+    });
+
+    if (error) {
+      console.error("[auth] Password reset OTP request failed", {
+        email,
+        message: error.message,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "If this email exists, a reset code has been sent.",
+    });
+  } catch (error) {
+    console.error("[auth] Password reset start failed", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({ error: "Could not send the reset code." });
+  }
+});
+
+app.post("/api/auth/password-reset/confirm", async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase is not configured yet." });
+    }
+
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const token = String(req.body?.code || "").trim();
+    const password = String(req.body?.password || "");
+    const confirmPassword = String(req.body?.confirm_password || "");
+
+    if (!email || !token) {
+      return res.status(400).json({ error: "Email and code are required." });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Use a password with at least 6 characters." });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: "Both password fields must match." });
+    }
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "email",
+    });
+
+    if (error || !data?.session?.access_token) {
+      return res.status(400).json({ error: error?.message || "Invalid or expired reset code." });
+    }
+
+    const resetSupabase = createAuthedClient(data.session.access_token);
+    const { error: updateError } = await resetSupabase.auth.updateUser({ password });
+    if (updateError) {
+      return res.status(400).json({ error: updateError.message });
+    }
+
+    await resetSupabase.auth.signOut().catch(() => {});
+    return res.json({ ok: true, message: "Password updated. You can log in now." });
+  } catch (error) {
+    console.error("[auth] Password reset confirm failed", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({ error: "Could not update the password." });
+  }
+});
+
 app.get("/payments/safepay/success", async (req, res) => {
   const auth = await requireAuth(req, res);
   if (!auth) return;
