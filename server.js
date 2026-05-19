@@ -49,6 +49,54 @@ const upload = multer({
 const PROFILE_SELECT = "id, name, email, job, cv_details, profile_details, onboarding_status, plan_id, billing_period, credits_used, credits_remaining, plan_started_at, plan_renews_at, plan_selection_required";
 let PDFParseClass;
 
+const PLAN_OVERRIDES = {
+  free: {
+    name: "Free",
+    price_cents: 0,
+    currency: "USD",
+    billing_period: "month",
+    generation_limit: 5,
+    ai_model: "AI resume generation",
+    support_level: "For getting started",
+    features: [
+      "5 resume generations",
+      "AI resume generation",
+      "ATS-friendly resume creation",
+      "Resume download access",
+    ],
+  },
+  standard: {
+    name: "Standard",
+    price_cents: 200,
+    currency: "USD",
+    billing_period: "month",
+    generation_limit: 200,
+    ai_model: "AI resume generation",
+    support_level: "Monthly standard plan",
+    features: [
+      "200 resume generations per month",
+      "AI resume generation",
+      "ATS-friendly resume creation",
+      "Resume download access",
+    ],
+  },
+  elite: {
+    name: "Elite",
+    price_cents: 2900,
+    currency: "USD",
+    billing_period: "month",
+    generation_limit: null,
+    ai_model: "AI resume generation",
+    support_level: "For unlimited monthly scale",
+    features: [
+      "Unlimited resume generations per month",
+      "AI resume generation",
+      "ATS-friendly resume creation",
+      "Resume download access",
+    ],
+  },
+};
+
 const PLACEHOLDER_JPEG_BASE64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAH/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAEFAqf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/ASP/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/ASP/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAY/Al//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/IV//2gAMAwEAAgADAAAAEP/EFBQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQMBAT8QH//EFBQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQIBAT8QH//EFBABAQAAAAAAAAAAAAAAAAAAARD/2gAIAQEAAT8QH//Z";
 
 const DEEDY_RESUME_CLASS = String.raw`
@@ -85,6 +133,18 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use((req, _res, next) => {
   console.info(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
+});
+
+app.get("/terms-and-conditions", (_req, res) => {
+  res.sendFile(path.join(__dirname, "ResumeBoy Terms.pdf"));
+});
+
+app.get("/privacy-policy", (_req, res) => {
+  res.sendFile(path.join(__dirname, "resumeboy privacy policy.pdf"));
+});
+
+app.get("/refund-policy", (_req, res) => {
+  res.sendFile(path.join(__dirname, "resumeboy refund.pdf"));
 });
 
 app.get("/", (_req, res) => {
@@ -1332,10 +1392,10 @@ async function getProfile(user, accessToken) {
       email: user.email || "",
       onboarding_status: true,
       plan_id: "free",
-      billing_period: "year",
+      billing_period: "month",
       credits_used: 0,
       credits_remaining: 5,
-      plan_renews_at: nextPlanRenewal("year"),
+      plan_renews_at: nextPlanRenewal("month"),
       plan_selection_required: true,
     }, { onConflict: "id" })
     .select(PROFILE_SELECT)
@@ -1363,11 +1423,12 @@ async function getProfileDashboard(user, accessToken) {
   if (countError) throw countError;
   if (plansError) throw plansError;
 
-  const currentPlan = (plans || []).find((plan) => plan.id === profile?.plan_id) || (plans || [])[0] || null;
+  const normalizedPlans = (plans || []).map(normalizePlan);
+  const currentPlan = normalizedPlans.find((plan) => plan.id === profile?.plan_id) || normalizedPlans[0] || null;
   return {
     profile,
     currentPlan,
-    plans: plans || [],
+    plans: normalizedPlans,
     stats: {
       totalGenerations: count || 0,
       leftCredits: currentPlan?.generation_limit === null ? "Unlimited" : profile?.credits_remaining ?? currentPlan?.generation_limit ?? 0,
@@ -1386,15 +1447,16 @@ async function getCreditSnapshot(user, accessToken) {
     .single();
 
   if (error) throw error;
+  const normalizedPlan = normalizePlan(plan);
 
-  const unlimited = plan?.generation_limit === null;
-  const remaining = unlimited ? null : Number(profile?.credits_remaining ?? plan?.generation_limit ?? 0);
+  const unlimited = normalizedPlan?.generation_limit === null;
+  const remaining = unlimited ? null : Number(profile?.credits_remaining ?? normalizedPlan?.generation_limit ?? 0);
   return {
     canGenerate: unlimited || remaining > 0,
     unlimited,
     remaining,
     profile,
-    plan,
+    plan: normalizedPlan,
   };
 }
 
@@ -1453,7 +1515,17 @@ async function getPlanById(accessToken, planId) {
     .maybeSingle();
 
   if (error) throw error;
-  return data;
+  return normalizePlan(data);
+}
+
+function normalizePlan(plan) {
+  if (!plan) return plan;
+  const override = PLAN_OVERRIDES[plan.id] || {};
+  return {
+    ...plan,
+    ...override,
+    features: Array.isArray(override.features) ? override.features : plan.features,
+  };
 }
 
 async function expireProfilePlanIfNeeded(accessToken, profile) {
