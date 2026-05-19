@@ -1960,7 +1960,14 @@ async function compileLatexToPdf(latex) {
 
 async function findLatexCompiler() {
   const bundledTectonic = latexPlatformResolver.resolveTectonicExecutable({});
+  const vendoredTectonic =
+    process.platform === "linux" && process.arch === "x64"
+      ? path.join(__dirname, "vendor", "tectonic", "linux-x64", "tectonic")
+      : "";
   const candidates = [
+    vendoredTectonic
+      ? { command: vendoredTectonic, args: ["--untrusted", "--print", "--keep-logs", "--keep-intermediates", "main.tex"], source: "vendored-tectonic-musl" }
+      : null,
     bundledTectonic
       ? { command: bundledTectonic, args: ["--untrusted", "--print", "--keep-logs", "--keep-intermediates", "main.tex"], source: "bundled-tectonic" }
       : null,
