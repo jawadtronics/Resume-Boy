@@ -8,6 +8,7 @@ const express = require("express");
 const multer = require("multer");
 const mammoth = require("mammoth");
 const { createClient } = require("@supabase/supabase-js");
+const WebSocket = require("ws");
 const Safepay = require("@sfpy/node-core");
 const { platformResolver: latexPlatformResolver } = require("node-latex-compiler");
 
@@ -27,7 +28,17 @@ const safepayPublicKey = process.env.SAFEPAY_PUBLIC_KEY;
 const safepayEnvironment = process.env.SAFEPAY_ENVIRONMENT || "sandbox";
 const safepayHost = process.env.SAFEPAY_HOST || (safepayEnvironment === "production" ? "https://api.getsafepay.com" : "https://sandbox.api.getsafepay.com");
 const safepayCurrency = process.env.SAFEPAY_CURRENCY || "USD";
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const supabaseClientOptions = {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+  realtime: {
+    transport: WebSocket,
+  },
+};
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey, supabaseClientOptions) : null;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -1164,10 +1175,7 @@ function serializeScriptJson(value) {
 
 function createAuthedClient(accessToken) {
   return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+    ...supabaseClientOptions,
     global: {
       headers: {
         Authorization: `Bearer ${accessToken}`,

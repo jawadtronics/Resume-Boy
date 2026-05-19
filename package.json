@@ -17,7 +17,8 @@
     "multer": "^2.0.2",
     "node-latex-compiler": "^1.0.5",
     "pdf-parse": "^2.4.5",
-    "qs": "^6.15.2"
+    "qs": "^6.15.2",
+    "ws": "^8.20.1"
   },
   "engines": {
     "node": "20.x"
