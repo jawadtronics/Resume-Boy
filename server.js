@@ -1998,6 +1998,8 @@ function commandExists(command) {
 
 function runLatexCompiler(compiler, cwd) {
   return new Promise((resolve) => {
+    const bundledLibraryPath = path.join(__dirname, "vendor", "latex-libs", "linux-x64");
+    const existingLibraryPath = process.env.LD_LIBRARY_PATH || "";
     execFile(
       compiler.command,
       compiler.args,
@@ -2005,6 +2007,9 @@ function runLatexCompiler(compiler, cwd) {
         cwd,
         env: {
           ...process.env,
+          LD_LIBRARY_PATH: existingLibraryPath
+            ? `${bundledLibraryPath}:${existingLibraryPath}`
+            : bundledLibraryPath,
           XDG_CACHE_HOME: path.join(os.tmpdir(), "resmaker-tectonic-cache"),
         },
         timeout: latexCompileTimeoutMs,
