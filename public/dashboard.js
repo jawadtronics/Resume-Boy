@@ -5,12 +5,15 @@ const sourceButtons = Array.from(document.querySelectorAll(".source-choice"));
 const templateButtons = Array.from(document.querySelectorAll(".template-card"));
 const selectedSourceInput = document.querySelector("#selected-source");
 const selectedTemplateInput = document.querySelector("#selected-template");
+const selectedModelInput = document.querySelector("#selected-model-tier");
 const sourceNextButton = document.querySelector("#source-next");
 const detailsNextButton = document.querySelector("#details-next");
 const startButton = document.querySelector("#start-button");
 const jobInput = document.querySelector("#job-input");
 const jobHint = document.querySelector("#job-hint");
 const templateLockCopy = document.querySelector("#template-lock-copy");
+const modelButtons = Array.from(document.querySelectorAll("[data-model-tier]"));
+const modelLockCopy = document.querySelector("#model-lock-copy");
 const creditsPopup = document.querySelector("#credits-popup");
 const creditsState = document.querySelector("#credits-state");
 
@@ -28,6 +31,8 @@ const sourceCopy = {
 let currentStep = 0;
 let selectedSource = "";
 let selectedTemplate = "";
+let selectedModelTier = "basic";
+let currentPlanId = "free";
 let detailsSent = false;
 
 window.addEventListener("load", () => {
@@ -37,6 +42,25 @@ window.addEventListener("load", () => {
 
 document.querySelectorAll("[data-plan-upgrade]").forEach((button) => {
   button.addEventListener("click", () => startPlanUpgrade(button.dataset.planUpgrade, button));
+});
+
+modelButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const nextTier = button.dataset.modelTier || "basic";
+    if (nextTier === "pro" && currentPlanId !== "elite") {
+      selectedModelTier = "basic";
+      if (modelLockCopy) modelLockCopy.textContent = "Pro requires the Elite plan.";
+    } else {
+      selectedModelTier = nextTier;
+      if (modelLockCopy) {
+        modelLockCopy.textContent = selectedModelTier === "pro"
+          ? "Using Gemini 3.5 for this resume."
+          : "Using Gemini 3.1 Flash Lite.";
+      }
+    }
+    selectedModelInput.value = selectedModelTier;
+    updateModelButtons();
+  });
 });
 
 sourceButtons.forEach((button) => {
@@ -141,6 +165,18 @@ function updateState() {
     : "Send the job details first, then choose a template.";
 
   startButton.disabled = !(detailsSent && selectedTemplate);
+  updateModelButtons();
+}
+
+function updateModelButtons() {
+  modelButtons.forEach((button) => {
+    const tier = button.dataset.modelTier || "basic";
+    const locked = tier === "pro" && currentPlanId !== "elite";
+    button.classList.toggle("is-selected", tier === selectedModelTier);
+    button.disabled = locked;
+    button.title = locked ? "Elite plan required" : "";
+  });
+  selectedModelInput.value = selectedModelTier;
 }
 
 function isSingleLinkedInJobUrl(value) {
@@ -173,6 +209,16 @@ async function checkCredits() {
     const payload = await response.json();
     if (!response.ok) return;
     const profile = payload.profile || {};
+    currentPlanId = profile.plan_id || "free";
+    if (currentPlanId !== "elite" && selectedModelTier === "pro") {
+      selectedModelTier = "basic";
+    }
+    if (modelLockCopy) {
+      modelLockCopy.textContent = currentPlanId === "elite"
+        ? "Elite can use Basic or Pro."
+        : "Pro is available on Elite.";
+    }
+    updateModelButtons();
     const remaining = Number(profile.credits_remaining ?? 0);
     if (profile.plan_id === "free" && remaining <= 0 && profile.onboarding_status === false) {
       creditsPopup.hidden = false;

@@ -42,6 +42,7 @@
         <form id="resume-flow-form" class="flow-card" action="/generate" method="post">
           <input id="selected-source" name="job_source" type="hidden">
           <input id="selected-template" name="template" type="hidden">
+          <input id="selected-model-tier" name="model_tier" type="hidden" value="basic">
 
           <div class="flow-progress" aria-label="Resume generation steps">
             <span class="is-active" data-progress="0">Step 1</span>
@@ -83,8 +84,16 @@
             <label class="sr-only" for="job-input">Job input</label>
             <textarea id="job-input" name="job_input" placeholder="Choose an input option first"></textarea>
 
-            <div class="flow-actions split-actions">
+            <div class="flow-actions split-actions job-settings-bar">
               <button class="button button-secondary flow-button" type="button" data-back>Back</button>
+              <div class="model-setting" aria-label="Model setting">
+                <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+                <div class="model-toggle" role="group" aria-label="Choose AI model">
+                  <button class="is-selected" type="button" data-model-tier="basic">Basic</button>
+                  <button type="button" data-model-tier="pro">Pro</button>
+                </div>
+                <small id="model-lock-copy">Pro is available on Elite.</small>
+              </div>
               <button id="details-next" class="button button-primary flow-button" type="button" disabled>Send</button>
             </div>
           </section>

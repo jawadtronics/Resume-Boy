@@ -31,6 +31,7 @@ async function runGeneration() {
       job_source: input.sourceType,
       job_input: input.jobInput,
       template: input.templateId,
+      model_tier: input.modelTier || "basic",
     });
 
     setStage({
@@ -48,6 +49,7 @@ async function runGeneration() {
     const latexPayload = await postJson("/api/generation/latex", {
       source_type: jobPayload.sourceType,
       template: jobPayload.templateId,
+      model_tier: jobPayload.modelTier || input.modelTier || "basic",
       job_details: jobPayload.jobDetails,
     });
 
@@ -62,6 +64,7 @@ async function runGeneration() {
       job_url: jobPayload.normalizedJobUrl,
       job_description: jobPayload.savedJobDescription,
       job_details: jobPayload.jobDetails,
+      model_tier: jobPayload.modelTier || input.modelTier || "basic",
       latex: latexPayload.latex,
     });
 

@@ -3702,3 +3702,482 @@ a:focus-visible {
   inherits: false;
   initial-value: 0deg;
 }
+
+/* Aero dark UI refresh from newuifiles */
+.login-page,
+.dashboard-page,
+.history-page,
+.profile-page {
+  --aero-bg: #02030a;
+  --aero-panel: rgba(12, 18, 31, 0.72);
+  --aero-panel-strong: rgba(17, 25, 42, 0.84);
+  --aero-border: rgba(255, 255, 255, 0.15);
+  --aero-border-strong: rgba(255, 255, 255, 0.28);
+  --aero-text: #f7fbff;
+  --aero-muted: #a7b4c8;
+  --aero-cyan: #36f5c5;
+  --aero-blue: #67a4ff;
+  --aero-violet: #d75cff;
+  --text: var(--aero-text);
+  --muted: var(--aero-muted);
+  --border: var(--aero-border);
+  --primary: var(--aero-text);
+  --surface: var(--aero-panel);
+  color: var(--aero-text);
+  background:
+    radial-gradient(circle at 10% 20%, rgba(39, 71, 126, 0.64) 0%, transparent 28%),
+    radial-gradient(circle at 85% 15%, rgba(54, 245, 197, 0.16) 0%, transparent 25%),
+    radial-gradient(circle at 54% 92%, rgba(215, 92, 255, 0.18) 0%, transparent 32%),
+    radial-gradient(circle at 10% 20%, #131b2e 0%, #000 100%);
+}
+
+.login-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 96px 96px;
+  mask-image: radial-gradient(circle at center, black 18%, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle at center, black 18%, transparent 78%);
+}
+
+.login-panel {
+  background: transparent;
+}
+
+.topbar,
+.dashboard-header,
+.history-header,
+.profile-header {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  z-index: 50;
+  width: min(90%, 1280px);
+  min-height: 68px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 28px;
+  border: 1px solid var(--aero-border);
+  border-radius: 999px;
+  background: rgba(14, 22, 38, 0.68);
+  color: var(--aero-text);
+  box-shadow: 0 18px 58px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(26px);
+}
+
+.topbar {
+  justify-content: center;
+}
+
+.brand,
+.dashboard-brand,
+.dashboard-nav a,
+.logout-button {
+  color: var(--aero-text);
+}
+
+.dashboard-nav {
+  gap: clamp(16px, 4vw, 42px);
+}
+
+.dashboard-nav a,
+.logout-button {
+  color: rgba(247, 251, 255, 0.68);
+  letter-spacing: 0.01em;
+}
+
+.dashboard-nav a.is-active,
+.dashboard-nav a:hover,
+.logout-button:hover {
+  color: #fff;
+}
+
+.dashboard-nav a.is-active {
+  text-shadow: 0 0 22px rgba(103, 164, 255, 0.58);
+}
+
+.brand-logo,
+.dashboard-brand .brand-logo,
+.editor-brand .brand-logo {
+  width: 116px;
+  height: 74px;
+  object-fit: contain;
+}
+
+.dashboard-main {
+  padding-top: 140px;
+}
+
+.history-main,
+.profile-main {
+  padding-top: 150px;
+}
+
+.login-card,
+.auth-modal-card {
+  border: 1px solid var(--aero-border);
+  border-radius: 34px;
+  background: rgba(9, 14, 25, 0.7);
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(32px);
+}
+
+.login-card {
+  width: min(100%, 460px);
+  padding: 34px;
+}
+
+.login-card h1,
+.auth-modal-card h2 {
+  color: #fff;
+}
+
+.email-form label,
+.check-label,
+.signup-copy,
+.legal-copy,
+.auth-modal-card > p:not(.modal-eyebrow),
+.password-reset-state {
+  color: var(--aero-muted);
+}
+
+.email-form input[type="text"],
+.email-form input[type="email"],
+.email-form input[type="password"],
+.password-reset-step input {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--aero-text);
+}
+
+.email-form input:focus,
+.password-reset-step input:focus {
+  border-color: rgba(103, 164, 255, 0.62);
+  box-shadow: 0 0 0 4px rgba(103, 164, 255, 0.12);
+}
+
+.button-primary,
+.flow-button.button-primary,
+.job-submit,
+.plan-card.is-current .plan-button {
+  background: linear-gradient(135deg, var(--aero-cyan), var(--aero-blue) 52%, var(--aero-violet));
+  color: #03050a;
+  box-shadow: 0 16px 44px rgba(103, 164, 255, 0.26);
+}
+
+.button-secondary,
+.flow-button.button-secondary,
+.plan-button,
+.history-new-link {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--aero-text);
+}
+
+.resume-flow {
+  width: min(100%, 1040px);
+}
+
+.flow-copy h1,
+.history-intro h1,
+.plan-heading h1 {
+  color: #fff;
+  text-shadow: 0 20px 64px rgba(0, 0, 0, 0.32);
+}
+
+.flow-copy h1 {
+  font-size: clamp(42px, 7vw, 84px);
+  line-height: 0.98;
+}
+
+.flow-copy h1 span {
+  color: rgba(247, 251, 255, 0.62);
+  font-size: 0.42em;
+  font-weight: 700;
+}
+
+.flow-card {
+  width: min(100%, 900px);
+  min-height: 620px;
+  padding: 28px;
+  border: 1px solid var(--aero-border);
+  border-radius: 38px;
+  background: rgba(8, 13, 25, 0.58);
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(34px);
+}
+
+.flow-step {
+  inset: 104px 28px 28px;
+}
+
+.flow-progress span {
+  color: rgba(247, 251, 255, 0.46);
+}
+
+.flow-progress span.is-active,
+.flow-eyebrow {
+  color: var(--aero-cyan);
+}
+
+.flow-progress i {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.source-choice,
+.flow-step textarea,
+.template-card,
+.history-list-panel,
+.history-row,
+.profile-stat-card,
+.profile-description-panel,
+.plan-card {
+  border-color: var(--aero-border);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--aero-text);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(26px);
+}
+
+.source-choice:hover,
+.source-choice.is-selected,
+.template-card:not(:disabled):hover,
+.template-card.is-selected,
+.history-row:hover,
+.history-row.is-active,
+.profile-stat-card:hover,
+.plan-button:hover:not(:disabled) {
+  border-color: rgba(103, 164, 255, 0.56);
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateY(-3px);
+}
+
+.source-choice .material-symbols-outlined,
+.history-row-index,
+.history-open-label,
+.history-new-link,
+.profile-avatar {
+  background: linear-gradient(135deg, var(--aero-cyan), var(--aero-blue) 52%, var(--aero-violet));
+  color: #03050a;
+}
+
+.flow-step h2,
+.template-heading h2,
+.template-card span,
+.source-choice strong,
+.history-row strong,
+.profile-stat-card strong,
+.profile-description-panel h2,
+.plan-card h2,
+.plan-price,
+.profile-identity input {
+  color: #fff;
+}
+
+.flow-step > p:not(.flow-eyebrow),
+.template-lock-copy,
+.source-choice small,
+.template-heading span,
+.history-intro p,
+.history-row small,
+.profile-stat-card span,
+.profile-description-panel p:last-child,
+.plan-subtitle,
+.plan-price span,
+.plan-features li {
+  color: var(--aero-muted);
+}
+
+.flow-step textarea {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--aero-text);
+  font-size: 21px;
+}
+
+.flow-step textarea:focus {
+  border-color: rgba(103, 164, 255, 0.68);
+  box-shadow: 0 0 0 4px rgba(103, 164, 255, 0.12);
+}
+
+.job-settings-bar {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.model-setting {
+  display: inline-flex;
+  flex: 1 1 340px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--aero-muted);
+}
+
+.model-setting > .material-symbols-outlined {
+  color: var(--aero-cyan);
+  font-size: 21px;
+}
+
+.model-toggle {
+  display: inline-flex;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.model-toggle button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(247, 251, 255, 0.7);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.model-toggle button.is-selected {
+  background: #fff;
+  color: #05070d;
+}
+
+.model-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
+.model-setting small {
+  min-width: 180px;
+  color: var(--aero-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.flow-step .template-grid {
+  gap: 20px;
+}
+
+.template-card {
+  min-height: 360px;
+  padding: 12px;
+}
+
+.template-card::after {
+  display: none;
+}
+
+.template-card img {
+  min-height: 300px;
+  border-radius: 18px;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.template-card span {
+  position: static;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.history-list-panel,
+.profile-description-panel,
+.plan-card {
+  border-radius: 34px;
+}
+
+.history-row {
+  min-height: 98px;
+}
+
+.profile-avatar {
+  border: 0;
+  box-shadow: 0 18px 50px rgba(103, 164, 255, 0.25);
+}
+
+.profile-description-panel textarea {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.26);
+  color: var(--aero-text);
+}
+
+.plan-card.is-current {
+  border-color: rgba(103, 164, 255, 0.56);
+  background:
+    radial-gradient(circle at 90% 8%, rgba(54, 245, 197, 0.16), transparent 24%),
+    rgba(9, 14, 25, 0.86);
+}
+
+@media (max-width: 780px) {
+  .topbar,
+  .dashboard-header,
+  .history-header,
+  .profile-header {
+    top: 12px;
+    width: calc(100% - 24px);
+    min-height: auto;
+    padding: 8px 12px;
+    border-radius: 26px;
+  }
+
+  .dashboard-header {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .brand-logo,
+  .dashboard-brand .brand-logo,
+  .editor-brand .brand-logo {
+    width: 98px;
+    height: 58px;
+  }
+
+  .dashboard-main,
+  .history-main,
+  .profile-main {
+    padding-top: 150px;
+  }
+
+  .login-card {
+    padding: 26px;
+  }
+
+  .flow-card {
+    min-height: 720px;
+    padding: 20px;
+  }
+
+  .flow-step {
+    inset: 96px 20px 20px;
+  }
+
+  .source-choice-grid,
+  .flow-step .template-grid,
+  .profile-stats,
+  .plans-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .job-settings-bar {
+    border-radius: 28px;
+  }
+
+  .model-setting {
+    justify-content: flex-start;
+  }
+}

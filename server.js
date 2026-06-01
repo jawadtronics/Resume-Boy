@@ -22,7 +22,8 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const apifyLinkedInUrl = process.env.APIFY_LINKEDIN_SCRAPER_URL;
 const apifyLinkedInJobUrl = process.env.APIFY_LINKEDIN_JOB_URL || buildDefaultLinkedInJobUrl();
 const geminiApiKey = process.env.GEMINI_API_KEY;
-const requestedGeminiModel = "gemini-3.1-flash-lite";
+const requestedGeminiModel = process.env.GEMINI_BASIC_MODEL || "gemini-3.1-flash-lite";
+const geminiProModel = process.env.GEMINI_PRO_MODEL || "gemini-3.5";
 const configuredGeminiModel = process.env.GEMINI_MODEL;
 const geminiModel = !configuredGeminiModel || configuredGeminiModel === "gemini-2.5-flash"
   ? requestedGeminiModel
@@ -273,6 +274,7 @@ app.post("/generate", async (req, res) => {
   const sourceType = String(req.body.job_source || "").trim();
   const jobInput = String(req.body.job_input || "").trim();
   const templateId = normalizeTemplateId(req.body.template);
+  const modelTier = normalizeModelTier(req.body.model_tier);
 
   if (!["linkedin_url", "description"].includes(sourceType) || !jobInput || !templateId) {
     return renderMessage(res, {
@@ -284,7 +286,7 @@ app.post("/generate", async (req, res) => {
     });
   }
 
-  return renderGenerationPage(res, { sourceType, jobInput, templateId });
+  return renderGenerationPage(res, { sourceType, jobInput, templateId, modelTier });
 });
 
 app.get("/history", async (req, res) => {
@@ -821,6 +823,7 @@ app.post("/api/generation/job-details", async (req, res) => {
     const sourceType = String(req.body?.job_source || "").trim();
     const jobInput = String(req.body?.job_input || "").trim();
     const templateId = normalizeTemplateId(req.body?.template);
+    const modelTier = normalizeModelTier(req.body?.model_tier);
 
     if (!["linkedin_url", "description"].includes(sourceType)) {
       return res.status(400).json({ error: "Choose LinkedIn job URL or text job description first." });
@@ -836,6 +839,7 @@ app.post("/api/generation/job-details", async (req, res) => {
     if (!creditSnapshot.canGenerate) {
       return res.status(402).json({ error: "Your plan has no resume credits left." });
     }
+    assertModelTierAccess(creditSnapshot.profile, modelTier);
 
     if (sourceType === "linkedin_url") {
       const normalizedJobUrl = normalizeLinkedInJobUrl(jobInput);
@@ -848,6 +852,7 @@ app.post("/api/generation/job-details", async (req, res) => {
       return res.json({
         sourceType,
         templateId,
+        modelTier,
         normalizedJobUrl,
         savedJobDescription: "",
         jobDetails,
@@ -862,6 +867,7 @@ app.post("/api/generation/job-details", async (req, res) => {
     return res.json({
       sourceType,
       templateId,
+      modelTier,
       normalizedJobUrl: "",
       savedJobDescription: jobInput,
       jobDetails: buildJobDetailsFromText(jobInput),
@@ -884,6 +890,7 @@ app.post("/api/generation/latex", async (req, res) => {
 
     const sourceType = String(req.body?.source_type || "").trim();
     const templateId = normalizeTemplateId(req.body?.template);
+    const modelTier = normalizeModelTier(req.body?.model_tier);
     const jobDetails = req.body?.job_details || {};
 
     if (!["linkedin_url", "description"].includes(sourceType) || !templateId) {
@@ -899,6 +906,7 @@ app.post("/api/generation/latex", async (req, res) => {
       getProfile(auth.user, auth.accessToken),
       readResumeTemplate(templateId),
     ]);
+    const modelAccess = assertModelTierAccess(profile, modelTier);
 
     const latex = await generateLatexResume({
       templateId,
@@ -906,12 +914,14 @@ app.post("/api/generation/latex", async (req, res) => {
       profile,
       jobDetails,
       sourceType,
+      modelTier: modelAccess.tier,
     });
 
     console.info("[resume] LaTeX generated", {
       userId: auth.user.id,
       sourceType,
       templateId,
+      modelTier: modelAccess.tier,
       outputCharacters: latex.length,
     });
 
@@ -937,6 +947,7 @@ app.post("/api/generation/finalize", async (req, res) => {
     const normalizedJobUrl = String(req.body?.job_url || "").trim();
     const savedJobDescription = String(req.body?.job_description || "").trim();
     const jobDetails = req.body?.job_details || {};
+    const modelTier = normalizeModelTier(req.body?.model_tier);
     const latex = String(req.body?.latex || "").trim();
 
     if (!["linkedin_url", "description"].includes(sourceType) || !templateId || !latex) {
@@ -947,14 +958,20 @@ app.post("/api/generation/finalize", async (req, res) => {
     if (!creditSnapshot.canGenerate) {
       return res.status(402).json({ error: "Your plan has no resume credits left." });
     }
+    const modelAccess = assertModelTierAccess(creditSnapshot.profile, modelTier);
+    const jobDetailsWithModel = {
+      ...(jobDetails && typeof jobDetails === "object" ? jobDetails : {}),
+      model_tier: modelAccess.tier,
+      model_name: getGeminiModelForTier(modelAccess.tier),
+    };
 
     const generation = await createProjectNote({
       accessToken: auth.accessToken,
       userId: auth.user.id,
       sourceType,
       jobUrl: normalizedJobUrl,
-      jobDescription: savedJobDescription || jobDetails?.job_description || "",
-      jobDetails,
+      jobDescription: savedJobDescription || jobDetailsWithModel?.job_description || "",
+      jobDetails: jobDetailsWithModel,
       templateId,
       latex,
     });
@@ -1030,6 +1047,7 @@ async function handleGenerateResume(req, res) {
     const sourceType = String(req.body.job_source || "").trim();
     const jobInput = String(req.body.job_input || "").trim();
     const templateId = normalizeTemplateId(req.body.template);
+    const modelTier = normalizeModelTier(req.body.model_tier);
 
     if (!["linkedin_url", "description"].includes(sourceType)) {
       return renderMessage(res, {
@@ -1058,6 +1076,7 @@ async function handleGenerateResume(req, res) {
     }
 
     const profile = await getProfile(auth.user, auth.accessToken);
+    const modelAccess = assertModelTierAccess(profile, modelTier);
     const templateCode = await readResumeTemplate(templateId);
     let jobDetails;
     let normalizedJobUrl = "";
@@ -1087,22 +1106,30 @@ async function handleGenerateResume(req, res) {
       profile,
       jobDetails,
       sourceType,
+      modelTier: modelAccess.tier,
     });
 
     console.info("[resume] LaTeX generated", {
       userId: auth.user.id,
       sourceType,
       templateId,
+      modelTier: modelAccess.tier,
       outputCharacters: latex.length,
     });
+
+    const jobDetailsWithModel = {
+      ...(jobDetails && typeof jobDetails === "object" ? jobDetails : {}),
+      model_tier: modelAccess.tier,
+      model_name: getGeminiModelForTier(modelAccess.tier),
+    };
 
     const generation = await createProjectNote({
       accessToken: auth.accessToken,
       userId: auth.user.id,
       sourceType,
       jobUrl: normalizedJobUrl,
-      jobDescription: savedJobDescription || jobDetails?.job_description || "",
-      jobDetails,
+      jobDescription: savedJobDescription || jobDetailsWithModel?.job_description || "",
+      jobDetails: jobDetailsWithModel,
       templateId,
       latex,
     });
@@ -1777,7 +1804,7 @@ function renderLatexResult(res, latex, { templateId, sourceType, jobDetails }) {
   `);
 }
 
-function renderGenerationPage(res, { sourceType, jobInput, templateId }) {
+function renderGenerationPage(res, { sourceType, jobInput, templateId, modelTier = "basic" }) {
   res.status(200).send(`
     <!doctype html>
     <html lang="en">
@@ -1835,7 +1862,7 @@ function renderGenerationPage(res, { sourceType, jobInput, templateId }) {
           </div>
         </main>
 
-        <script id="generation-input" type="application/json">${serializeScriptJson({ sourceType, jobInput, templateId })}</script>
+        <script id="generation-input" type="application/json">${serializeScriptJson({ sourceType, jobInput, templateId, modelTier })}</script>
         <script src="/generate.js"></script>
       </body>
     </html>
@@ -2726,6 +2753,26 @@ function normalizeTemplateId(value) {
   return ["template1", "template2", "template3"].includes(templateId) ? templateId : "";
 }
 
+function normalizeModelTier(value) {
+  return String(value || "").trim().toLowerCase() === "pro" ? "pro" : "basic";
+}
+
+function assertModelTierAccess(profile, modelTier) {
+  const tier = normalizeModelTier(modelTier);
+  const planId = String(profile?.plan_id || "free").toLowerCase();
+  if (tier === "pro" && planId !== "elite") {
+    const error = new Error("The pro model is available only on the Elite plan.");
+    error.statusCode = 403;
+    error.publicMessage = "The pro model is available only on the Elite plan.";
+    throw error;
+  }
+  return { tier, planId };
+}
+
+function getGeminiModelForTier(modelTier) {
+  return normalizeModelTier(modelTier) === "pro" ? geminiProModel : geminiModel;
+}
+
 async function compileLatexToPdf(latex) {
   const compiler = await findLatexCompiler();
   if (!compiler) {
@@ -3414,11 +3461,13 @@ async function buildProfileDetailsBlock({ jobs, sourcePayload }) {
   }
 }
 
-async function generateLatexResume({ templateId, templateCode, profile, jobDetails, sourceType }) {
+async function generateLatexResume({ templateId, templateCode, profile, jobDetails, sourceType, modelTier = "basic" }) {
   if (!geminiApiKey) {
     throw new Error("GEMINI_API_KEY is not configured.");
   }
 
+  const tier = normalizeModelTier(modelTier);
+  const selectedModel = getGeminiModelForTier(tier);
   const prompt = buildLatexResumePrompt({
     templateId,
     templateCode,
@@ -3427,7 +3476,8 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
     sourceType,
   });
   console.info("[gemini] Generating LaTeX resume", {
-    model: geminiModel,
+    model: selectedModel,
+    modelTier: tier,
     fallbackModel: geminiFallbackModel,
     templateId,
     sourceType,
@@ -3437,6 +3487,7 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
   const { rawText, response, modelUsed } = await requestGeminiContent({
     prompt,
     label: "LaTeX resume",
+    primaryModel: selectedModel,
     generationConfig: {
       temperature: 0.25,
       topP: 0.85,
@@ -3445,6 +3496,7 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
   });
   console.info("[gemini] LaTeX response received", {
     modelUsed,
+    modelTier: tier,
     status: response.status,
     ok: response.ok,
     characters: rawText.length,
@@ -3461,8 +3513,8 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
   return latex;
 }
 
-async function requestGeminiContent({ prompt, generationConfig, label }) {
-  const models = Array.from(new Set([geminiModel, geminiFallbackModel].filter(Boolean)));
+async function requestGeminiContent({ prompt, generationConfig, label, primaryModel = geminiModel }) {
+  const models = Array.from(new Set([primaryModel, geminiFallbackModel].filter(Boolean)));
   let lastError = null;
 
   for (const model of models) {
