@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Boy - Manager Board</title>
+    <link rel="icon" type="image/avif" href="/favicon.png.avif">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/manager-assets/manager.css">
+  </head>
+  <body class="manager-page">
+    <header class="manager-header">
+      <a class="manager-brand" href="/manager/dashboard" aria-label="Resume Boy manager board">
+        <img src="/logo.png" alt="Resume Boy">
+      </a>
+      <form action="/manager/logout" method="post">
+        <button class="manager-ghost-button" type="submit">Log out</button>
+      </form>
+    </header>
+
+    <main class="manager-main">
+      <section class="manager-hero">
+        <p class="manager-eyebrow">Generation analytics</p>
+        <h1>Manager Board</h1>
+        <p>Track users, total generations, daily activity, and filtered generation volume.</p>
+      </section>
+
+      <section class="manager-filters" aria-label="Report filters">
+        <label>
+          <span>From</span>
+          <input id="filter-from" type="date">
+        </label>
+        <label>
+          <span>To</span>
+          <input id="filter-to" type="date">
+        </label>
+        <label>
+          <span>User</span>
+          <select id="filter-user">
+            <option value="">All users</option>
+          </select>
+        </label>
+        <button id="apply-filters" class="manager-button" type="button">Apply filters</button>
+        <button id="clear-filters" class="manager-ghost-button" type="button">Clear</button>
+      </section>
+
+      <p id="manager-state" class="manager-state" role="status" aria-live="polite"></p>
+
+      <section class="manager-stats" aria-label="Manager stats">
+        <article>
+          <span>Total users</span>
+          <strong id="stat-users">0</strong>
+        </article>
+        <article>
+          <span>Total generations</span>
+          <strong id="stat-generations">0</strong>
+        </article>
+        <article>
+          <span>Filtered generations</span>
+          <strong id="stat-range-generations">0</strong>
+        </article>
+        <article>
+          <span>Generations today</span>
+          <strong id="stat-today-generations">0</strong>
+        </article>
+      </section>
+
+      <section class="manager-panel">
+        <div class="manager-panel-heading">
+          <div>
+            <p class="manager-eyebrow">Users</p>
+            <h2>User generation activity</h2>
+          </div>
+          <span id="user-count-label">0 users</span>
+        </div>
+        <div class="manager-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Plan</th>
+                <th>Total</th>
+                <th>Selected range</th>
+                <th>Today</th>
+                <th>Credits</th>
+              </tr>
+            </thead>
+            <tbody id="users-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="manager-grid">
+        <article class="manager-panel">
+          <div class="manager-panel-heading">
+            <div>
+              <p class="manager-eyebrow">Daily</p>
+              <h2>Daily generation count</h2>
+            </div>
+          </div>
+          <div id="daily-list" class="daily-list"></div>
+        </article>
+
+        <article class="manager-panel">
+          <div class="manager-panel-heading">
+            <div>
+              <p class="manager-eyebrow">Recent</p>
+              <h2>Latest generations</h2>
+            </div>
+          </div>
+          <div id="recent-list" class="recent-list"></div>
+        </article>
+      </section>
+    </main>
+
+    <script src="/manager-assets/manager.js"></script>
+  </body>
+</html>

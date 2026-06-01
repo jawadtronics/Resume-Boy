@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resume Boy - Manager Login</title>
+    <link rel="icon" type="image/avif" href="/favicon.png.avif">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/manager-assets/manager.css">
+  </head>
+  <body class="manager-login-page">
+    <main class="manager-login-card" aria-labelledby="manager-login-title">
+      <img class="manager-logo" src="/logo.png" alt="Resume Boy">
+      <p class="manager-eyebrow">Manager board</p>
+      <h1 id="manager-login-title">Log in to reporting</h1>
+      <p>Use the manager account approved for this dashboard.</p>
+
+      <form class="manager-form" action="/manager/login" method="post">
+        <label for="manager-email">Email address</label>
+        <input id="manager-email" name="email" type="email" autocomplete="username" placeholder="manager@example.com" required>
+
+        <label for="manager-password">Password</label>
+        <input id="manager-password" name="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+
+        <button class="manager-button" type="submit">Log in</button>
+      </form>
+    </main>
+  </body>
+</html>

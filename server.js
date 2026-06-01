@@ -18,6 +18,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const apifyLinkedInUrl = process.env.APIFY_LINKEDIN_SCRAPER_URL;
 const apifyLinkedInJobUrl = process.env.APIFY_LINKEDIN_JOB_URL || buildDefaultLinkedInJobUrl();
 const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -28,6 +29,11 @@ const safepayPublicKey = process.env.SAFEPAY_PUBLIC_KEY;
 const safepayEnvironment = process.env.SAFEPAY_ENVIRONMENT || "sandbox";
 const safepayHost = process.env.SAFEPAY_HOST || (safepayEnvironment === "production" ? "https://api.getsafepay.com" : "https://sandbox.api.getsafepay.com");
 const safepayCurrency = process.env.SAFEPAY_CURRENCY || "USD";
+const managerEmails = parseManagerEmails(process.env.MANAGER_EMAILS);
+const managerSessionSecret = process.env.MANAGER_SESSION_SECRET || safepaySecretKey || supabaseKey || crypto.randomBytes(32).toString("hex");
+const managerTestEmail = process.env.MANAGER_TEST_EMAIL || "manager@resumeboy.test";
+const managerTestPassword = process.env.MANAGER_TEST_PASSWORD || "ManagerBoard@2026!";
+const managerTestEnabled = process.env.ENABLE_MANAGER_TEST_LOGIN === "true" || (!process.env.VERCEL && process.env.NODE_ENV !== "production");
 const supabaseClientOptions = {
   auth: {
     autoRefreshToken: false,
@@ -39,6 +45,9 @@ const supabaseClientOptions = {
   },
 };
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey, supabaseClientOptions) : null;
+const supabaseAdmin = supabaseUrl && supabaseServiceRoleKey
+  ? createClient(supabaseUrl, supabaseServiceRoleKey, supabaseClientOptions)
+  : null;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -129,6 +138,7 @@ const DEEDY_RESUME_CLASS = String.raw`
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/manager-assets", express.static(path.join(__dirname, "manager-board")));
 
 app.use((req, _res, next) => {
   console.info(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -153,6 +163,75 @@ app.get("/", (_req, res) => {
 
 app.get("/login", (_req, res) => {
   res.sendFile(path.join(__dirname, "views", "login.html"));
+});
+
+app.get("/manager", (req, res) => {
+  const manager = getManagerSession(req);
+  res.redirect(manager ? "/manager/dashboard" : "/manager/login");
+});
+
+app.get("/manager/login", (req, res) => {
+  const manager = getManagerSession(req);
+  if (manager) return res.redirect("/manager/dashboard");
+  return res.sendFile(path.join(__dirname, "manager-board", "login.html"));
+});
+
+app.post("/manager/login", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    if (!email || !password) {
+      return renderManagerLoginError(res, "Email and password are required.");
+    }
+
+    const manager = await authenticateManager(email, password);
+    if (!manager) {
+      return renderManagerLoginError(res, "Manager access was not approved for this account.");
+    }
+
+    setManagerCookie(res, manager);
+    return res.redirect(303, "/manager/dashboard");
+  } catch (error) {
+    console.error("[manager] Login failed", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return renderManagerLoginError(res, error.publicMessage || "Could not log in to the manager board.");
+  }
+});
+
+app.post("/manager/logout", (_req, res) => {
+  clearManagerCookie(res);
+  res.redirect(303, "/manager/login");
+});
+
+app.get("/manager/dashboard", (req, res) => {
+  const manager = requireManager(req, res);
+  if (!manager) return;
+  res.sendFile(path.join(__dirname, "manager-board", "dashboard.html"));
+});
+
+app.get("/api/manager/summary", async (req, res) => {
+  try {
+    const manager = requireManager(req, res);
+    if (!manager) return;
+
+    if (!supabaseAdmin) {
+      return res.status(500).json({
+        error: "Manager reporting needs SUPABASE_SERVICE_ROLE_KEY on the server.",
+      });
+    }
+
+    const summary = await getManagerSummary(req.query || {});
+    return res.json(summary);
+  } catch (error) {
+    console.error("[manager] Summary failed", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({ error: "Could not load manager dashboard." });
+  }
 });
 
 app.get("/logo.png", (_req, res) => {
@@ -1113,6 +1192,265 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function parseManagerEmails(value) {
+  return new Set(
+    String(value || "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+async function authenticateManager(email, password) {
+  if (managerTestEnabled && email === managerTestEmail.toLowerCase() && password === managerTestPassword) {
+    return { email, source: "test" };
+  }
+
+  if (!supabase) {
+    const error = new Error("Supabase is not configured.");
+    error.publicMessage = "Supabase is not configured for manager login.";
+    throw error;
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data?.user) {
+    const loginError = new Error(error?.message || "Invalid manager credentials.");
+    loginError.publicMessage = "Invalid manager credentials.";
+    throw loginError;
+  }
+
+  if (managerEmails.has(email)) {
+    return { email, userId: data.user.id, source: "allowlist" };
+  }
+
+  const authedSupabase = createAuthedClient(data.session.access_token);
+  const { data: profile } = await authedSupabase
+    .from("profile")
+    .select("id, email, role, account_role, user_role")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  const role = String(profile?.role || profile?.account_role || profile?.user_role || "").toLowerCase();
+  if (["manager", "admin", "owner"].includes(role)) {
+    return { email, userId: data.user.id, source: role };
+  }
+
+  return null;
+}
+
+function setManagerCookie(res, manager) {
+  const maxAge = 8 * 60 * 60 * 1000;
+  const payload = {
+    email: manager.email,
+    source: manager.source || "manager",
+    exp: Date.now() + maxAge,
+  };
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", managerSessionSecret)
+    .update(body)
+    .digest("base64url");
+  res.cookie("manager_session", `${body}.${signature}`, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge,
+  });
+}
+
+function getManagerSession(req) {
+  const cookies = parseCookies(req.headers.cookie || "");
+  const token = cookies.manager_session;
+  if (!token || !token.includes(".")) return null;
+
+  const [body, signature] = token.split(".");
+  const expected = crypto
+    .createHmac("sha256", managerSessionSecret)
+    .update(body)
+    .digest("base64url");
+
+  if (!timingSafeEqual(signature, expected)) return null;
+
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    if (!payload?.email || Number(payload.exp || 0) <= Date.now()) return null;
+    return payload;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function requireManager(req, res) {
+  const manager = getManagerSession(req);
+  if (manager) return manager;
+  if (req.path.startsWith("/api/")) {
+    res.status(401).json({ error: "Manager login required." });
+    return null;
+  }
+  res.redirect("/manager/login");
+  return null;
+}
+
+function clearManagerCookie(res) {
+  res.clearCookie("manager_session");
+}
+
+function timingSafeEqual(left, right) {
+  const leftBuffer = Buffer.from(String(left || ""));
+  const rightBuffer = Buffer.from(String(right || ""));
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function renderManagerLoginError(res, message) {
+  return res.status(401).send(`
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Manager login failed</title>
+        <link rel="stylesheet" href="/manager-assets/manager.css">
+      </head>
+      <body class="manager-login-page">
+        <main class="manager-login-card">
+          <p class="manager-eyebrow">Access denied</p>
+          <h1>${escapeHtml(message)}</h1>
+          <a class="manager-button" href="/manager/login">Back to manager login</a>
+        </main>
+      </body>
+    </html>
+  `);
+}
+
+async function getManagerSummary(query) {
+  const { from, to, userId } = normalizeManagerFilters(query);
+  const [profilesResult, rangeNotesResult, allNotesResult] = await Promise.all([
+    supabaseAdmin
+      .from("profile")
+      .select("id, name, email, plan_id, credits_remaining")
+      .order("email", { ascending: true }),
+    buildManagerNotesQuery({ from, to, userId }),
+    buildManagerNotesQuery({ userId }),
+  ]);
+
+  if (profilesResult.error) throw profilesResult.error;
+  if (rangeNotesResult.error) throw rangeNotesResult.error;
+  if (allNotesResult.error) throw allNotesResult.error;
+
+  const profiles = profilesResult.data || [];
+  const rangeNotes = rangeNotesResult.data || [];
+  const allNotes = allNotesResult.data || [];
+  const todayKey = formatDateKey(new Date());
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  const rangeByUser = countBy(allNotesForUser(rangeNotes), "user_id");
+  const totalByUser = countBy(allNotesForUser(allNotes), "user_id");
+  const todayByUser = countBy(allNotes.filter((note) => formatDateKey(note.created_at) === todayKey), "user_id");
+  const daily = buildDailyBreakdown(rangeNotes);
+
+  return {
+    filters: {
+      from: from ? from.toISOString() : "",
+      to: to ? to.toISOString() : "",
+      userId: userId || "",
+    },
+    totals: {
+      users: profiles.length,
+      generations: allNotes.length,
+      rangeGenerations: rangeNotes.length,
+      todayGenerations: allNotes.filter((note) => formatDateKey(note.created_at) === todayKey).length,
+    },
+    users: profiles.map((profile) => ({
+      id: profile.id,
+      name: profile.name || "Unnamed user",
+      email: profile.email || "",
+      planId: profile.plan_id || "free",
+      creditsRemaining: profile.credits_remaining,
+      totalGenerations: totalByUser.get(profile.id) || 0,
+      rangeGenerations: rangeByUser.get(profile.id) || 0,
+      todayGenerations: todayByUser.get(profile.id) || 0,
+    })),
+    daily,
+    recentGenerations: rangeNotes.slice(0, 25).map((note) => {
+      const profile = profileById.get(note.user_id) || {};
+      return {
+        id: note.id,
+        userId: note.user_id,
+        userName: profile.name || profile.email || "Unknown user",
+        userEmail: profile.email || "",
+        title: note.title || "Untitled generation",
+        sourceType: note.source_type || "",
+        status: note.status || "",
+        createdAt: note.created_at || "",
+      };
+    }),
+  };
+}
+
+function buildManagerNotesQuery({ from, to, userId } = {}) {
+  let query = supabaseAdmin
+    .from("project_notes")
+    .select("id, user_id, title, source_type, status, created_at")
+    .neq("status", "sample")
+    .order("created_at", { ascending: false })
+    .limit(10000);
+
+  if (from) query = query.gte("created_at", from.toISOString());
+  if (to) query = query.lte("created_at", to.toISOString());
+  if (userId) query = query.eq("user_id", userId);
+  return query;
+}
+
+function normalizeManagerFilters(query) {
+  const from = parseDateFilter(query.from, false);
+  const to = parseDateFilter(query.to, true);
+  const userId = String(query.user_id || "").trim();
+  return { from, to, userId };
+}
+
+function parseDateFilter(value, endOfDay) {
+  if (!value) return null;
+  const date = new Date(String(value));
+  if (!Number.isFinite(date.getTime())) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    date.setUTCHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+  }
+  return date;
+}
+
+function allNotesForUser(notes) {
+  return notes.filter((note) => note.user_id);
+}
+
+function countBy(items, key) {
+  const counts = new Map();
+  items.forEach((item) => {
+    const value = item[key];
+    if (!value) return;
+    counts.set(value, (counts.get(value) || 0) + 1);
+  });
+  return counts;
+}
+
+function buildDailyBreakdown(notes) {
+  const counts = new Map();
+  notes.forEach((note) => {
+    const dateKey = formatDateKey(note.created_at);
+    if (!dateKey) return;
+    counts.set(dateKey, (counts.get(dateKey) || 0) + 1);
+  });
+  return Array.from(counts.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, count]) => ({ date, count }));
+}
+
+function formatDateKey(value) {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
 }
 
 function renderMessage(res, { eyebrow, title, detail, href = "/login", linkLabel = "Back to login" }) {
