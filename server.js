@@ -232,8 +232,9 @@ app.get("/api/manager/summary", async (req, res) => {
       stack: error.stack,
     });
     if (isSupabasePermissionError(error)) {
+      const tableName = extractPermissionDeniedTable(error.message);
       return res.status(500).json({
-        error: "Manager reporting is using a Supabase key without permission to read all profiles. Set Vercel SUPABASE_SERVICE_ROLE_KEY to the server-only service_role key, then redeploy.",
+        error: `Manager reporting is using a Supabase key that cannot read ${tableName ? `the ${tableName} table` : "one of the reporting tables"}. Run manager-board/supabase-manager-setup.sql in Supabase, then refresh this page.`,
       });
     }
     return res.status(500).json({ error: "Could not load manager dashboard." });
@@ -1249,6 +1250,11 @@ function decodeJwtPayload(value) {
 function isSupabasePermissionError(error) {
   const message = String(error?.message || "").toLowerCase();
   return message.includes("permission denied") || error?.code === "42501";
+}
+
+function extractPermissionDeniedTable(message) {
+  const match = String(message || "").match(/permission denied for table\s+([a-zA-Z0-9_]+)/i);
+  return match?.[1] || "";
 }
 
 async function authenticateManager(email, password) {
