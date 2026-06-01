@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
   </head>
@@ -35,9 +35,8 @@
 
     <main class="history-main">
       <section class="history-intro">
-        <p class="dashboard-kicker">Generation board</p>
-        <h1>History</h1>
-        <p>Every resume draft, job input, LaTeX source, and saved PDF appears here.</p>
+        <h1>Generation History</h1>
+        <p>Review and manage your past resume generations.</p>
       </section>
 
       <section id="history-shell" class="history-shell" aria-live="polite">
@@ -55,7 +54,10 @@
     <template id="history-row-template">
       <button class="history-row" type="button">
         <span class="history-row-index"></span>
-        <span>
+        <span class="history-thumb" aria-hidden="true">
+          <span class="material-symbols-outlined">article</span>
+        </span>
+        <span class="history-row-copy">
           <strong class="history-row-title"></strong>
           <small class="history-row-meta"></small>
         </span>

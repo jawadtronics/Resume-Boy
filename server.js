@@ -1817,11 +1817,24 @@ function renderGenerationPage(res, { sourceType, jobInput, templateId, modelTier
         <link rel="icon" type="image/avif" href="/favicon.png.avif">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/styles.css">
       </head>
       <body class="generate-page">
         <div class="dashboard-grid-bg" aria-hidden="true"></div>
+        <header class="generate-header">
+          <a class="generate-brand" href="/app" aria-label="Resume Boy dashboard">
+            <img class="brand-logo" src="/logo.png" alt="" aria-hidden="true">
+          </a>
+          <nav class="generate-nav" aria-label="Generation navigation">
+            <a href="/app">Playground</a>
+            <a href="/history">History</a>
+            <a href="/profile">Profile</a>
+          </nav>
+          <form action="/logout" method="post">
+            <button class="generate-logout" type="submit">Log out</button>
+          </form>
+        </header>
         <main class="generate-shell">
           <section class="generate-copy">
             <p class="dashboard-kicker">Resume generation</p>
