@@ -1563,6 +1563,65 @@ a:focus-visible {
   animation-delay: 140ms;
 }
 
+.loading-percent {
+  display: block;
+  margin-top: 18px;
+  color: #101417;
+  font-size: clamp(42px, 7vw, 86px);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: 0;
+  animation: premium-enter 520ms ease 180ms both;
+}
+
+.loading-track {
+  width: min(420px, 78vw);
+  height: 8px;
+  margin-top: 22px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(16, 20, 23, 0.1);
+  box-shadow: inset 0 1px 3px rgba(16, 20, 23, 0.08);
+}
+
+.loading-track span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #101417, #5f6f68);
+  transition: width 520ms ease;
+}
+
+.loading-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: min(560px, 86vw);
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.loading-steps li {
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(16, 20, 23, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.54);
+  color: rgba(16, 20, 23, 0.52);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.loading-steps li.is-active {
+  border-color: rgba(16, 20, 23, 0.2);
+  background: #101417;
+  color: #fff;
+}
+
 .editor-page {
   min-height: 100vh;
   background:

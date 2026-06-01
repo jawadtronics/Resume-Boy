@@ -3197,7 +3197,7 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
       generationConfig: {
         temperature: 0.25,
         topP: 0.85,
-        maxOutputTokens: 20000,
+        maxOutputTokens: 12000,
       },
     }),
   });
@@ -3225,7 +3225,7 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
 }
 
 function buildLatexResumePrompt({ templateId, templateCode, profile, jobDetails, sourceType }) {
-  const profileDetails = profile?.profile_details || "";
+  const profileDetails = truncateForPrompt(profile?.profile_details || "", 9000);
   const jobRequirements = extractJobRequirements(jobDetails);
 
   return [
@@ -3248,15 +3248,15 @@ function buildLatexResumePrompt({ templateId, templateCode, profile, jobDetails,
     "Extracted target job requirements to use. If any field is empty because the user pasted plain text, infer it conservatively from the full job description:",
     JSON.stringify(jobRequirements, null, 2),
     "",
-    "Full job details JSON:",
-    JSON.stringify(jobDetails, null, 2),
+    "Compact job details:",
+    JSON.stringify(compactJobDetailsForPrompt(jobDetails), null, 2),
     "",
     "Candidate profile row from Supabase:",
     JSON.stringify({
       name: profile?.name || "",
       email: profile?.email || "",
       job: profile?.job || null,
-      cv_details: profile?.cv_details || null,
+      cv_details: truncateForPrompt(profile?.cv_details || "", 7000) || null,
     }, null, 2),
     "",
     "Candidate profile_details text from Supabase:",
@@ -3285,6 +3285,31 @@ function extractJobRequirements(jobDetails) {
     employment_type: jobDetails?.job_employment_type || "",
     industries: jobDetails?.job_industries || "",
   };
+}
+
+function compactJobDetailsForPrompt(jobDetails = {}) {
+  return {
+    job_posting_id: jobDetails.job_posting_id || "",
+    job_url: jobDetails.job_url || "",
+    job_title: jobDetails.job_title || "",
+    company_name: jobDetails.company_name || "",
+    job_location: jobDetails.job_location || "",
+    job_seniority_level: jobDetails.job_seniority_level || "",
+    job_employment_type: jobDetails.job_employment_type || "",
+    job_industries: jobDetails.job_industries || "",
+    job_description: truncateForPrompt(jobDetails.job_description || "", 7000),
+    experience_years_min: jobDetails.experience_years_min ?? null,
+    experience_years_max: jobDetails.experience_years_max ?? null,
+    education_level: Array.isArray(jobDetails.education_level) ? jobDetails.education_level : [],
+    certifications: Array.isArray(jobDetails.certifications) ? jobDetails.certifications.slice(0, 12) : [],
+    skills: Array.isArray(jobDetails.skills) ? jobDetails.skills.slice(0, 35) : [],
+  };
+}
+
+function truncateForPrompt(value, maxCharacters) {
+  const text = String(value || "").trim();
+  if (!maxCharacters || text.length <= maxCharacters) return text;
+  return `${text.slice(0, maxCharacters).trim()}\n\n[Trimmed to ${maxCharacters} characters for faster generation.]`;
 }
 
 function stripMarkdownCodeFence(value) {

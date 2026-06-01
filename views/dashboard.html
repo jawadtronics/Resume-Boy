@@ -129,7 +129,15 @@
     <div id="resume-loading" class="loading-overlay resume-loading" aria-hidden="true">
       <div class="loader-ring" aria-hidden="true"><span></span></div>
       <h2>Writing your resume</h2>
-      <p>Matching your profile, job requirements, and selected LaTeX template.</p>
+      <p id="loading-stage">Preparing your resume workspace.</p>
+      <strong id="loading-percent" class="loading-percent">0%</strong>
+      <div class="loading-track" aria-hidden="true"><span id="loading-bar"></span></div>
+      <ol class="loading-steps" aria-label="Generation progress">
+        <li class="is-active" data-loading-step="0">Scraping job</li>
+        <li data-loading-step="1">Syncing profile</li>
+        <li data-loading-step="2">Generating resume</li>
+        <li data-loading-step="3">Opening editor</li>
+      </ol>
     </div>
 
     <div id="credits-popup" class="credits-popup" hidden>

@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "maxDuration": 60,
+      "maxDuration": 180,
       "includeFiles": "{views/**,public/**,manager-board/**,template*.tex,*.png,*.avif,*.pdf,vendor/**,node_modules/{pdf-parse,pdfjs-dist,@napi-rs/**,node-latex-compiler,@node-latex-compiler}/**}"
     }
   },
