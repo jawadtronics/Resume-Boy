@@ -48,6 +48,7 @@ const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabase
 const supabaseAdmin = supabaseUrl && supabaseServiceRoleKey
   ? createClient(supabaseUrl, supabaseServiceRoleKey, supabaseClientOptions)
   : null;
+const supabaseAdminConfigError = getSupabaseAdminConfigError();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -217,9 +218,9 @@ app.get("/api/manager/summary", async (req, res) => {
     const manager = requireManager(req, res);
     if (!manager) return;
 
-    if (!supabaseAdmin) {
+    if (supabaseAdminConfigError) {
       return res.status(500).json({
-        error: "Manager reporting needs SUPABASE_SERVICE_ROLE_KEY on the server.",
+        error: supabaseAdminConfigError,
       });
     }
 
@@ -230,6 +231,11 @@ app.get("/api/manager/summary", async (req, res) => {
       message: error.message,
       stack: error.stack,
     });
+    if (isSupabasePermissionError(error)) {
+      return res.status(500).json({
+        error: "Manager reporting is using a Supabase key without permission to read all profiles. Set Vercel SUPABASE_SERVICE_ROLE_KEY to the server-only service_role key, then redeploy.",
+      });
+    }
     return res.status(500).json({ error: "Could not load manager dashboard." });
   }
 });
@@ -1201,6 +1207,48 @@ function parseManagerEmails(value) {
       .map((email) => email.trim().toLowerCase())
       .filter(Boolean)
   );
+}
+
+function getSupabaseAdminConfigError() {
+  if (!supabaseUrl) return "Manager reporting needs SUPABASE_URL on the server.";
+  if (!supabaseServiceRoleKey) {
+    return "Manager reporting needs SUPABASE_SERVICE_ROLE_KEY on the server. ENABLE_MANAGER_TEST_LOGIN only enables test login; it does not grant database reporting access.";
+  }
+  if (supabaseServiceRoleKey === supabaseKey || isPublishableSupabaseKey(supabaseServiceRoleKey)) {
+    return "SUPABASE_SERVICE_ROLE_KEY is currently set to a publishable/anon key. Replace it with the server-only Supabase service_role key in Vercel.";
+  }
+  if (!isLikelySupabaseServiceRoleKey(supabaseServiceRoleKey)) {
+    return "SUPABASE_SERVICE_ROLE_KEY does not look like a Supabase service_role key. Use the server-only service_role key from Supabase API settings.";
+  }
+  if (!supabaseAdmin) return "Manager reporting could not initialize the Supabase admin client.";
+  return "";
+}
+
+function isPublishableSupabaseKey(value) {
+  const key = String(value || "").trim();
+  return key.startsWith("sb_publishable_") || key.startsWith("eyJ") && decodeJwtPayload(key)?.role === "anon";
+}
+
+function isLikelySupabaseServiceRoleKey(value) {
+  const key = String(value || "").trim();
+  if (key.startsWith("sb_secret_")) return true;
+  return decodeJwtPayload(key)?.role === "service_role";
+}
+
+function decodeJwtPayload(value) {
+  const [, payload] = String(value || "").split(".");
+  if (!payload) return null;
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(Buffer.from(normalized, "base64").toString("utf8"));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function isSupabasePermissionError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("permission denied") || error?.code === "42501";
 }
 
 async function authenticateManager(email, password) {
