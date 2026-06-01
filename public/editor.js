@@ -20,6 +20,10 @@ const generationId =
   embeddedEditorData.generationId ||
   sessionStorage.getItem("resmaker_generation_id") ||
   "";
+let currentPdfSourceUrl =
+  embeddedEditorData.pdfUrl ||
+  sessionStorage.getItem("resmaker_generated_pdf_url") ||
+  "";
 
 const initialLatex =
   embeddedEditorData.latex ||
@@ -32,6 +36,9 @@ if (embeddedEditorData.latex) {
 }
 if (generationId) {
   sessionStorage.setItem("resmaker_generation_id", generationId);
+}
+if (currentPdfSourceUrl) {
+  sessionStorage.setItem("resmaker_generated_pdf_url", currentPdfSourceUrl);
 }
 
 const editor = window.CodeMirror.fromTextArea(sourceTextarea, {
@@ -47,7 +54,11 @@ const editor = window.CodeMirror.fromTextArea(sourceTextarea, {
 
 editor.setValue(initialLatex);
 window.setTimeout(() => editor.refresh(), 120);
-window.setTimeout(() => compileLatex(), 350);
+if (currentPdfSourceUrl) {
+  showPdfUrl(currentPdfSourceUrl);
+} else {
+  window.setTimeout(() => compileLatex(), 350);
+}
 
 editor.on("change", () => {
   setStatus(autosaveStatus, "Auto-saving...");
@@ -57,27 +68,34 @@ editor.on("change", () => {
 });
 
 downloadButton.addEventListener("click", async () => {
-  if (!currentPdfBlob) return;
+  if (!currentPdfBlob && !currentPdfSourceUrl) return;
   sessionStorage.setItem(finalLatexKey, editor.getValue());
-  await saveGenerationPdf();
-  const downloadUrl = URL.createObjectURL(currentPdfBlob);
-  const link = document.createElement("a");
-  link.href = downloadUrl;
-  link.download = "resume-boy-resume.pdf";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => {
-    URL.revokeObjectURL(downloadUrl);
-    window.location.href = "/app";
-  }, 650);
+  const previousText = downloadButton.textContent;
+  downloadButton.disabled = true;
+  downloadButton.textContent = "Downloading...";
+  try {
+    const saved = generationId ? await saveGenerationPdf() : null;
+    if (saved?.pdf_url) {
+      currentPdfSourceUrl = saved.pdf_url;
+      sessionStorage.setItem("resmaker_generated_pdf_url", currentPdfSourceUrl);
+    }
+    await downloadCurrentPdf();
+    downloadButton.textContent = "Downloaded";
+    window.setTimeout(() => {
+      downloadButton.textContent = previousText;
+      downloadButton.disabled = false;
+    }, 900);
+  } catch (error) {
+    console.error("[editor] Download failed", error);
+    showCompileError("Could not download PDF.", error.message);
+    downloadButton.textContent = previousText;
+    downloadButton.disabled = false;
+  }
 });
 
 nextButton.addEventListener("click", () => {
   sessionStorage.setItem(finalLatexKey, editor.getValue());
-  saveGenerationPdf().finally(() => {
-    window.location.href = "/app";
-  });
+  window.location.href = "/app";
 });
 
 document.querySelectorAll("[data-plan-upgrade]").forEach((button) => {
@@ -166,6 +184,7 @@ function normalizeLatexForEditor(latex) {
 function showPdf(pdfBlob) {
   if (currentPdfUrl) URL.revokeObjectURL(currentPdfUrl);
   currentPdfBlob = pdfBlob;
+  currentPdfSourceUrl = "";
   currentPdfUrl = URL.createObjectURL(pdfBlob);
   if (pdfPreview) pdfPreview.src = currentPdfUrl;
   if (emptyPreview) emptyPreview.hidden = true;
@@ -175,9 +194,23 @@ function showPdf(pdfBlob) {
   compileLogPanel.open = false;
 }
 
+function showPdfUrl(pdfUrl) {
+  if (!pdfUrl) return;
+  if (currentPdfUrl) URL.revokeObjectURL(currentPdfUrl);
+  currentPdfBlob = null;
+  currentPdfUrl = "";
+  currentPdfSourceUrl = pdfUrl;
+  if (pdfPreview) pdfPreview.src = pdfUrl;
+  if (emptyPreview) emptyPreview.hidden = true;
+  downloadButton.disabled = false;
+  setStatus(compileStatus, "Compiled");
+  compileLog.textContent = "";
+  compileLogPanel.open = false;
+}
+
 function showCompileError(message, log) {
   setStatus(compileStatus, "Error");
-  downloadButton.disabled = !currentPdfBlob;
+  downloadButton.disabled = !currentPdfBlob && !currentPdfSourceUrl;
   compileLog.textContent = [message, log].filter(Boolean).join("\\n\\n");
   compileLogPanel.open = false;
 }
@@ -232,12 +265,34 @@ async function saveGenerationPdf() {
     }
 
     setStatus(autosaveStatus, "Saved");
+    if (payload?.pdf_url) {
+      showPdfUrl(payload.pdf_url);
+    }
     return payload;
   } catch (error) {
     console.error("[editor] PDF save failed", error);
     showCompileError("Could not save PDF.", error.message);
     return null;
   }
+}
+
+async function downloadCurrentPdf() {
+  let blob = currentPdfBlob;
+  if (!blob && currentPdfSourceUrl) {
+    const response = await fetch(currentPdfSourceUrl);
+    if (!response.ok) throw new Error("Could not fetch the saved PDF.");
+    blob = await response.blob();
+  }
+  if (!blob) throw new Error("No compiled PDF is available yet.");
+
+  const downloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = "resume-boy-resume.pdf";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 650);
 }
 
 async function startPlanUpgrade(planId, button) {

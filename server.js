@@ -22,7 +22,12 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const apifyLinkedInUrl = process.env.APIFY_LINKEDIN_SCRAPER_URL;
 const apifyLinkedInJobUrl = process.env.APIFY_LINKEDIN_JOB_URL || buildDefaultLinkedInJobUrl();
 const geminiApiKey = process.env.GEMINI_API_KEY;
-const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const requestedGeminiModel = "gemini-3.1-flash-lite";
+const configuredGeminiModel = process.env.GEMINI_MODEL;
+const geminiModel = !configuredGeminiModel || configuredGeminiModel === "gemini-2.5-flash"
+  ? requestedGeminiModel
+  : configuredGeminiModel;
+const geminiFallbackModel = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
 const latexCompileTimeoutMs = Number(process.env.LATEX_COMPILE_TIMEOUT_MS || 30000);
 const safepaySecretKey = process.env.SAFEPAY_SECRET_KEY;
 const safepayPublicKey = process.env.SAFEPAY_PUBLIC_KEY;
@@ -261,6 +266,27 @@ app.get("/editor", async (req, res) => {
   res.sendFile(path.join(__dirname, "views", "editor.html"));
 });
 
+app.post("/generate", async (req, res) => {
+  const auth = await requireAuth(req, res);
+  if (!auth) return;
+
+  const sourceType = String(req.body.job_source || "").trim();
+  const jobInput = String(req.body.job_input || "").trim();
+  const templateId = normalizeTemplateId(req.body.template);
+
+  if (!["linkedin_url", "description"].includes(sourceType) || !jobInput || !templateId) {
+    return renderMessage(res, {
+      eyebrow: "Missing generation details",
+      title: "Choose the job source, add details, and select a template first.",
+      detail: "Return to the playground and complete the three steps.",
+      href: "/app",
+      linkLabel: "Back to playground",
+    });
+  }
+
+  return renderGenerationPage(res, { sourceType, jobInput, templateId });
+});
+
 app.get("/history", async (req, res) => {
   const auth = await requireAuth(req, res);
   if (!auth) return;
@@ -291,6 +317,7 @@ app.get("/history/:id/editor", async (req, res) => {
     return renderEditorPage(res, {
       initialLatex: normalizeLatexForCompilation(note?.latex_code || ""),
       generationId: note?.id || "",
+      initialPdfUrl: note?.pdf_url || "",
       title: `${note?.title || "Saved"} Resume Editor`,
     });
   } catch (error) {
@@ -782,6 +809,179 @@ app.post("/api/history/:id/save", async (req, res) => {
     return res.status(error.statusCode || 500).json({
       error: error.publicMessage || "Could not save the resume PDF.",
       log: sanitizeCompileLog(error.compileLog || error.message || ""),
+    });
+  }
+});
+
+app.post("/api/generation/job-details", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
+
+    const sourceType = String(req.body?.job_source || "").trim();
+    const jobInput = String(req.body?.job_input || "").trim();
+    const templateId = normalizeTemplateId(req.body?.template);
+
+    if (!["linkedin_url", "description"].includes(sourceType)) {
+      return res.status(400).json({ error: "Choose LinkedIn job URL or text job description first." });
+    }
+    if (!jobInput) {
+      return res.status(400).json({ error: "Add the job details before generating the resume." });
+    }
+    if (!templateId) {
+      return res.status(400).json({ error: "Select a resume template before starting." });
+    }
+
+    const creditSnapshot = await getCreditSnapshot(auth.user, auth.accessToken);
+    if (!creditSnapshot.canGenerate) {
+      return res.status(402).json({ error: "Your plan has no resume credits left." });
+    }
+
+    if (sourceType === "linkedin_url") {
+      const normalizedJobUrl = normalizeLinkedInJobUrl(jobInput);
+      console.info("[resume] LinkedIn job selected", {
+        userId: auth.user.id,
+        jobUrl: normalizedJobUrl,
+        templateId,
+      });
+      const jobDetails = await fetchLinkedInJobDetails(normalizedJobUrl);
+      return res.json({
+        sourceType,
+        templateId,
+        normalizedJobUrl,
+        savedJobDescription: "",
+        jobDetails,
+      });
+    }
+
+    console.info("[resume] Text job description selected", {
+      userId: auth.user.id,
+      characters: jobInput.length,
+      templateId,
+    });
+    return res.json({
+      sourceType,
+      templateId,
+      normalizedJobUrl: "",
+      savedJobDescription: jobInput,
+      jobDetails: buildJobDetailsFromText(jobInput),
+    });
+  } catch (error) {
+    console.error("[resume] Job detail step failed", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(error.statusCode || 500).json({
+      error: error.publicMessage || error.message || "Could not prepare job details.",
+    });
+  }
+});
+
+app.post("/api/generation/latex", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
+
+    const sourceType = String(req.body?.source_type || "").trim();
+    const templateId = normalizeTemplateId(req.body?.template);
+    const jobDetails = req.body?.job_details || {};
+
+    if (!["linkedin_url", "description"].includes(sourceType) || !templateId) {
+      return res.status(400).json({ error: "Generation details are incomplete." });
+    }
+
+    const creditSnapshot = await getCreditSnapshot(auth.user, auth.accessToken);
+    if (!creditSnapshot.canGenerate) {
+      return res.status(402).json({ error: "Your plan has no resume credits left." });
+    }
+
+    const [profile, templateCode] = await Promise.all([
+      getProfile(auth.user, auth.accessToken),
+      readResumeTemplate(templateId),
+    ]);
+
+    const latex = await generateLatexResume({
+      templateId,
+      templateCode,
+      profile,
+      jobDetails,
+      sourceType,
+    });
+
+    console.info("[resume] LaTeX generated", {
+      userId: auth.user.id,
+      sourceType,
+      templateId,
+      outputCharacters: latex.length,
+    });
+
+    return res.json({ latex: normalizeLatexForCompilation(latex) });
+  } catch (error) {
+    console.error("[resume] LaTeX step failed", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(error.statusCode || 500).json({
+      error: error.publicMessage || error.message || "Could not generate resume LaTeX.",
+    });
+  }
+});
+
+app.post("/api/generation/finalize", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
+
+    const sourceType = String(req.body?.source_type || "").trim();
+    const templateId = normalizeTemplateId(req.body?.template);
+    const normalizedJobUrl = String(req.body?.job_url || "").trim();
+    const savedJobDescription = String(req.body?.job_description || "").trim();
+    const jobDetails = req.body?.job_details || {};
+    const latex = String(req.body?.latex || "").trim();
+
+    if (!["linkedin_url", "description"].includes(sourceType) || !templateId || !latex) {
+      return res.status(400).json({ error: "Generation result is incomplete." });
+    }
+
+    const creditSnapshot = await getCreditSnapshot(auth.user, auth.accessToken);
+    if (!creditSnapshot.canGenerate) {
+      return res.status(402).json({ error: "Your plan has no resume credits left." });
+    }
+
+    const generation = await createProjectNote({
+      accessToken: auth.accessToken,
+      userId: auth.user.id,
+      sourceType,
+      jobUrl: normalizedJobUrl,
+      jobDescription: savedJobDescription || jobDetails?.job_description || "",
+      jobDetails,
+      templateId,
+      latex,
+    });
+
+    const savedPdf = await saveProjectNotePdf({
+      accessToken: auth.accessToken,
+      userId: auth.user.id,
+      noteId: generation.id,
+      latex,
+    });
+    const creditResult = await consumeGenerationCredit(auth.user, auth.accessToken);
+
+    return res.json({
+      generationId: generation.id,
+      latex: normalizeLatexForCompilation(latex),
+      pdfUrl: savedPdf?.pdf_url || "",
+      redirectUrl: `/history/${encodeURIComponent(generation.id)}/editor`,
+      creditExhausted: creditResult?.planId === "free" && creditResult?.remaining === 0,
+    });
+  } catch (error) {
+    console.error("[resume] Finalize step failed", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(error.statusCode || 500).json({
+      error: error.publicMessage || error.message || "Could not finish the resume.",
+      log: sanitizeCompileLog(error.compileLog || ""),
     });
   }
 });
@@ -1577,7 +1777,72 @@ function renderLatexResult(res, latex, { templateId, sourceType, jobDetails }) {
   `);
 }
 
-function renderEditorPage(res, { initialLatex = "", generationId = "", title = "Resume Boy - LaTeX Editor", creditExhausted = false } = {}) {
+function renderGenerationPage(res, { sourceType, jobInput, templateId }) {
+  res.status(200).send(`
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Resume Boy - Generating Resume</title>
+        <meta name="description" content="Resume Boy is an AI powered resume generator for AI powered personalized job matching and personalize resume generator workflows.">
+        <meta name="keywords" content="AI powered resume generator, AI powered personalized job, personalize resume generator, ATS resume generator">
+        <link rel="icon" type="image/avif" href="/favicon.png.avif">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/styles.css">
+      </head>
+      <body class="generate-page">
+        <div class="dashboard-grid-bg" aria-hidden="true"></div>
+        <main class="generate-shell">
+          <section class="generate-copy">
+            <p class="dashboard-kicker">Resume generation</p>
+            <h1>Building your ATS resume</h1>
+            <p id="generate-stage">Preparing your resume workspace.</p>
+            <strong id="generate-percent">1%</strong>
+            <div class="generate-track" aria-hidden="true"><span id="generate-bar"></span></div>
+            <ol class="generate-steps" aria-label="Generation steps">
+              <li class="is-active" data-generate-step="0">Scraping job</li>
+              <li data-generate-step="1">Syncing profile</li>
+              <li data-generate-step="2">Writing LaTeX</li>
+              <li data-generate-step="3">Compiling PDF</li>
+            </ol>
+          </section>
+
+          <section class="generate-skeleton" aria-label="Resume preview loading">
+            <div class="skeleton-sheet">
+              <span class="sk-line sk-title"></span>
+              <span class="sk-line sk-short"></span>
+              <span class="sk-line"></span>
+              <span class="sk-line"></span>
+              <span class="sk-line sk-mid"></span>
+              <span class="sk-rule"></span>
+              <span class="sk-line"></span>
+              <span class="sk-line"></span>
+              <span class="sk-line sk-short"></span>
+              <span class="sk-rule"></span>
+              <span class="sk-line"></span>
+              <span class="sk-line sk-mid"></span>
+              <span class="sk-line"></span>
+            </div>
+          </section>
+
+          <div id="generate-error" class="generate-error" hidden>
+            <strong>Generation stopped</strong>
+            <p></p>
+            <a href="/app">Back to playground</a>
+          </div>
+        </main>
+
+        <script id="generation-input" type="application/json">${serializeScriptJson({ sourceType, jobInput, templateId })}</script>
+        <script src="/generate.js"></script>
+      </body>
+    </html>
+  `);
+}
+
+function renderEditorPage(res, { initialLatex = "", generationId = "", initialPdfUrl = "", title = "Resume Boy - LaTeX Editor", creditExhausted = false } = {}) {
   res.status(200).send(`
     <!doctype html>
     <html lang="en">
@@ -1640,7 +1905,7 @@ function renderEditorPage(res, { initialLatex = "", generationId = "", title = "
 
         ${creditExhausted ? creditExhaustedDialogHtml() : ""}
 
-        <script id="editor-initial-latex" type="application/json">${serializeScriptJson({ latex: initialLatex, generationId })}</script>
+        <script id="editor-initial-latex" type="application/json">${serializeScriptJson({ latex: initialLatex, generationId, pdfUrl: initialPdfUrl })}</script>
         <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/stex/stex.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.min.js"></script>
@@ -3109,43 +3374,30 @@ async function buildProfileDetailsBlock({ jobs, sourcePayload }) {
   }
 
   const prompt = buildGeminiPrompt({ jobs, sourcePayload });
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
   console.info("[gemini] Generating profile details", {
     model: geminiModel,
+    fallbackModel: geminiFallbackModel,
     sourceType: sourcePayload.type,
     promptCharacters: prompt.length,
   });
 
   try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const { rawText, response, modelUsed } = await requestGeminiContent({
+      prompt,
+      label: "profile details",
+      generationConfig: {
+        temperature: 0.35,
+        topP: 0.9,
+        maxOutputTokens: 8192,
       },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.35,
-          topP: 0.9,
-          maxOutputTokens: 8192,
-        },
-      }),
     });
-    const rawText = await response.text();
     console.info("[gemini] Response received", {
+      modelUsed,
       status: response.status,
       ok: response.ok,
       characters: rawText.length,
       preview: rawText.slice(0, 500),
     });
-
-    if (!response.ok) {
-      throw new Error(`Gemini failed: ${response.status} ${rawText.slice(0, 240)}`);
-    }
 
     const data = parseJsonOrThrow(rawText, "Gemini response");
     const generated = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("\n").trim();
@@ -3174,45 +3426,30 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
     jobDetails,
     sourceType,
   });
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
-
   console.info("[gemini] Generating LaTeX resume", {
     model: geminiModel,
+    fallbackModel: geminiFallbackModel,
     templateId,
     sourceType,
     promptCharacters: prompt.length,
   });
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const { rawText, response, modelUsed } = await requestGeminiContent({
+    prompt,
+    label: "LaTeX resume",
+    generationConfig: {
+      temperature: 0.25,
+      topP: 0.85,
+      maxOutputTokens: 12000,
     },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [{ text: prompt }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.25,
-        topP: 0.85,
-        maxOutputTokens: 12000,
-      },
-    }),
   });
-
-  const rawText = await response.text();
   console.info("[gemini] LaTeX response received", {
+    modelUsed,
     status: response.status,
     ok: response.ok,
     characters: rawText.length,
     preview: rawText.slice(0, 500),
   });
-
-  if (!response.ok) {
-    throw new Error(`Gemini failed: ${response.status} ${rawText.slice(0, 240)}`);
-  }
 
   const data = parseJsonOrThrow(rawText, "Gemini LaTeX response");
   const generated = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("\n").trim();
@@ -3222,6 +3459,47 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
   }
 
   return latex;
+}
+
+async function requestGeminiContent({ prompt, generationConfig, label }) {
+  const models = Array.from(new Set([geminiModel, geminiFallbackModel].filter(Boolean)));
+  let lastError = null;
+
+  for (const model of models) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig,
+      }),
+    });
+    const rawText = await response.text();
+
+    if (response.ok) {
+      return { response, rawText, modelUsed: model };
+    }
+
+    lastError = new Error(`Gemini ${label || "request"} failed on ${model}: ${response.status} ${rawText.slice(0, 240)}`);
+    const shouldTryFallback = response.status === 400 || response.status === 404;
+    if (!shouldTryFallback) throw lastError;
+
+    console.warn("[gemini] Model failed, trying fallback if available", {
+      label,
+      model,
+      status: response.status,
+      preview: rawText.slice(0, 240),
+    });
+  }
+
+  throw lastError || new Error(`Gemini ${label || "request"} failed.`);
 }
 
 function buildLatexResumePrompt({ templateId, templateCode, profile, jobDetails, sourceType }) {
