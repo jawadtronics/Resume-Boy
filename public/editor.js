@@ -1,6 +1,9 @@
 const storageKey = "resmaker_generated_latex";
 const finalLatexKey = "resmaker_final_latex";
 const sourceTextarea = document.querySelector("#latex-source");
+const aiEditForm = document.querySelector("#ai-edit-form");
+const aiEditInput = document.querySelector("#ai-edit-input");
+const saveButton = document.querySelector("#save-button");
 const downloadButton = document.querySelector("#download-button");
 const nextButton = document.querySelector("#next-button");
 const autosaveStatus = document.querySelector("#autosave-status");
@@ -67,6 +70,20 @@ editor.on("change", () => {
   scheduleDraftSave();
 });
 
+aiEditForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await applyAiEdit();
+});
+
+saveButton?.addEventListener("click", async () => {
+  sessionStorage.setItem(finalLatexKey, editor.getValue());
+  if (generationId) {
+    await saveLatexDraft();
+  } else {
+    setStatus(autosaveStatus, "Saved");
+  }
+});
+
 downloadButton.addEventListener("click", async () => {
   if (!currentPdfBlob && !currentPdfSourceUrl) return;
   sessionStorage.setItem(finalLatexKey, editor.getValue());
@@ -115,6 +132,54 @@ function scheduleDraftSave() {
   if (!generationId) return;
   window.clearTimeout(draftTimer);
   draftTimer = window.setTimeout(() => saveLatexDraft(), 2600);
+}
+
+async function applyAiEdit() {
+  const instruction = aiEditInput?.value.trim() || "";
+  const latex = editor.getValue();
+  if (!instruction || !latex.trim()) return;
+
+  const previousPlaceholder = aiEditInput.placeholder;
+  aiEditInput.disabled = true;
+  aiEditInput.value = "";
+  aiEditInput.placeholder = "Making changes with AI...";
+  setStatus(autosaveStatus, "AI editing...");
+
+  try {
+    const response = await fetch("/api/latex/edit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({ latex, instruction }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || "AI edit failed.");
+    }
+
+    const updatedLatex = normalizeLatexForEditor(payload.latex || "");
+    if (!updatedLatex.trim()) {
+      throw new Error("AI returned an empty LaTeX document.");
+    }
+
+    editor.setValue(updatedLatex);
+    sessionStorage.setItem(storageKey, updatedLatex);
+    sessionStorage.setItem(finalLatexKey, updatedLatex);
+    setStatus(autosaveStatus, "Updated");
+    window.clearTimeout(compileTimer);
+    await compileLatex();
+    scheduleDraftSave();
+  } catch (error) {
+    console.error("[editor] AI edit failed", error);
+    setStatus(autosaveStatus, "AI edit failed");
+    showCompileError("Could not apply the AI edit.", error.message);
+  } finally {
+    aiEditInput.disabled = false;
+    aiEditInput.placeholder = previousPlaceholder;
+    aiEditInput.focus();
+  }
 }
 
 function getEmbeddedEditorData() {
@@ -329,8 +394,8 @@ function setStatus(node, text) {
 
 function statusState(text) {
   const value = String(text || "").toLowerCase();
-  if (value.includes("compiling") || value.includes("saving")) return "busy";
-  if (value.includes("compiled") || value.includes("saved")) return "success";
+  if (value.includes("compiling") || value.includes("saving") || value.includes("editing")) return "busy";
+  if (value.includes("compiled") || value.includes("saved") || value.includes("updated")) return "success";
   if (value.includes("error") || value.includes("failed") || value.includes("fix")) return "error";
   return "neutral";
 }

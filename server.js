@@ -397,6 +397,39 @@ app.post("/api/latex/compile", async (req, res) => {
   }
 });
 
+app.post("/api/latex/edit", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
+
+    const latex = String(req.body?.latex || "");
+    const instruction = String(req.body?.instruction || "").trim();
+    if (!latex.trim()) {
+      return res.status(400).json({ error: "No LaTeX was provided." });
+    }
+    if (!instruction) {
+      return res.status(400).json({ error: "No edit instruction was provided." });
+    }
+    if (Buffer.byteLength(latex, "utf8") > 1.5 * 1024 * 1024) {
+      return res.status(413).json({ error: "LaTeX input is too large." });
+    }
+    if (Buffer.byteLength(instruction, "utf8") > 4000) {
+      return res.status(413).json({ error: "Edit instruction is too long." });
+    }
+
+    const updatedLatex = await editLatexWithGemini({ latex, instruction });
+    return res.status(200).json({ latex: normalizeLatexForCompilation(updatedLatex) });
+  } catch (error) {
+    console.error("[latex-ai] Edit failed", {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(error.statusCode || 500).json({
+      error: error.publicMessage || "Could not apply the AI edit.",
+    });
+  }
+});
+
 app.get("/api/history", async (req, res) => {
   try {
     const auth = await requireAuth(req, res);
@@ -1937,7 +1970,16 @@ function renderEditorPage(res, { initialLatex = "", generationId = "", initialPd
             <span id="compile-status">Waiting</span>
             <span id="autosave-status">Saved</span>
           </div>
+          <form id="ai-edit-form" class="editor-ai-form" aria-label="AI LaTeX change request">
+            <input
+              id="ai-edit-input"
+              type="text"
+              autocomplete="off"
+              placeholder="Tell me which change is to be made, and I will make those changes."
+            >
+          </form>
           <div class="editor-floating-actions">
+            <button id="save-button" class="editor-button secondary" type="button">Save</button>
             <button id="download-button" class="editor-button primary" type="button" disabled>Download</button>
             <button id="next-button" class="editor-button secondary" type="button">Done</button>
           </div>
@@ -3526,6 +3568,52 @@ async function generateLatexResume({ templateId, templateCode, profile, jobDetai
   return latex;
 }
 
+async function editLatexWithGemini({ latex, instruction }) {
+  if (!geminiApiKey) {
+    throw new Error("GEMINI_API_KEY is not configured.");
+  }
+
+  const normalizedLatex = normalizeLatexForCompilation(latex);
+  const prompt = buildLatexEditPrompt({
+    latex: normalizedLatex,
+    instruction,
+  });
+  console.info("[gemini] Editing LaTeX resume", {
+    model: geminiModel,
+    fallbackModel: geminiFallbackModel,
+    instructionCharacters: instruction.length,
+    latexCharacters: normalizedLatex.length,
+    promptCharacters: prompt.length,
+  });
+
+  const { rawText, response, modelUsed } = await requestGeminiContent({
+    prompt,
+    label: "LaTeX edit",
+    primaryModel: geminiModel,
+    generationConfig: {
+      temperature: 0.12,
+      topP: 0.75,
+      maxOutputTokens: 12000,
+    },
+  });
+  console.info("[gemini] LaTeX edit response received", {
+    modelUsed,
+    status: response.status,
+    ok: response.ok,
+    characters: rawText.length,
+    preview: rawText.slice(0, 500),
+  });
+
+  const data = parseJsonOrThrow(rawText, "Gemini LaTeX edit response");
+  const generated = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("\n").trim();
+  const updatedLatex = normalizeLatexForCompilation(stripMarkdownCodeFence(generated || ""));
+  if (!updatedLatex || !updatedLatex.includes("\\begin{document}") || !updatedLatex.includes("\\end{document}")) {
+    throw new Error("Gemini did not return a complete LaTeX document.");
+  }
+
+  return updatedLatex;
+}
+
 async function requestGeminiContent({ prompt, generationConfig, label, primaryModel = geminiModel }) {
   const models = Array.from(new Set([primaryModel, geminiFallbackModel].filter(Boolean)));
   let lastError = null;
@@ -3607,6 +3695,25 @@ function buildLatexResumePrompt({ templateId, templateCode, profile, jobDetails,
     "",
     "LaTeX template to fill:",
     templateCode,
+  ].join("\n");
+}
+
+function buildLatexEditPrompt({ latex, instruction }) {
+  return [
+    "You are an expert LaTeX resume editor.",
+    "Edit the provided LaTeX resume according to the user's instruction.",
+    "Return only the complete updated LaTeX document. Do not wrap the answer in markdown fences. Do not add explanations.",
+    "Preserve the document class, packages, custom commands, visual style, and structure unless the instruction explicitly requires changing them.",
+    "Keep the resume truthful and internally consistent. Do not invent employers, schools, dates, credentials, phone numbers, links, or claims.",
+    "If the instruction asks to add bullets or improve wording, reuse and refine details already present in the LaTeX. Add concise ATS-friendly phrasing.",
+    "Escape LaTeX special characters correctly.",
+    "When using itemize with enumitem options, write standalone starts as \\begin{itemize}[leftmargin=0.15in, label={}] with no extra closing brace after the option bracket.",
+    "",
+    "User instruction:",
+    instruction,
+    "",
+    "Current LaTeX resume:",
+    truncateForPrompt(latex, 28000),
   ].join("\n");
 }
 

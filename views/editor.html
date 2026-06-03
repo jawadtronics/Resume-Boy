@@ -52,7 +52,16 @@
         <span id="compile-status">Waiting</span>
         <span id="autosave-status">Saved</span>
       </div>
+      <form id="ai-edit-form" class="editor-ai-form" aria-label="AI LaTeX change request">
+        <input
+          id="ai-edit-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Tell me which change is to be made, and I will make those changes."
+        >
+      </form>
       <div class="editor-floating-actions">
+        <button id="save-button" class="editor-button secondary" type="button">Save</button>
         <button id="download-button" class="editor-button primary" type="button" disabled>Download</button>
         <button id="next-button" class="editor-button secondary" type="button">Done</button>
       </div>
