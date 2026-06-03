@@ -9,7 +9,7 @@ const errorCopy = errorNode?.querySelector("p");
 const storageKey = "resmaker_generated_latex";
 const finalLatexKey = "resmaker_final_latex";
 let displayedPercent = 1;
-let targetPercent = 8;
+let targetPercent = 12;
 let progressTimer = null;
 
 const input = readGenerationInput();
@@ -39,7 +39,7 @@ async function runGeneration() {
       target: 48,
       step: 1,
     });
-    await pause(500);
+    await pause(180);
 
     setStage({
       text: "Writing a tailored ATS-friendly LaTeX resume.",
@@ -82,7 +82,7 @@ async function runGeneration() {
       target: 100,
       step: 3,
     });
-    await pause(650);
+    await pause(360);
     window.location.href = finalPayload.redirectUrl || "/editor";
   } catch (error) {
     console.error("[generate] Generation failed", error);
@@ -122,11 +122,11 @@ function startSmoothProgress() {
     if (displayedPercent < targetPercent) {
       displayedPercent += 1;
     } else if (displayedPercent < 98) {
-      displayedPercent += Math.random() > 0.72 ? 1 : 0;
+      displayedPercent += Math.random() > 0.48 ? 1 : 0;
     }
     displayedPercent = Math.min(displayedPercent, 100);
     renderProgress();
-  }, 260);
+  }, 115);
 }
 
 function stopSmoothProgress() {
