@@ -1977,9 +1977,10 @@ function renderEditorPage(res, { initialLatex = "", generationId = "", initialPd
               autocomplete="off"
               placeholder="Tell me which change is to be made, and I will make those changes."
             >
+            <button id="ai-edit-submit" class="editor-ai-submit" type="submit" aria-label="Send change request">&uarr;</button>
           </form>
           <div class="editor-floating-actions">
-            <button id="save-button" class="editor-button secondary" type="button">Save</button>
+            <span class="editor-autosave-label">Autosave</span>
             <button id="download-button" class="editor-button primary" type="button" disabled>Download</button>
             <button id="next-button" class="editor-button secondary" type="button">Done</button>
           </div>

@@ -3,7 +3,7 @@ const finalLatexKey = "resmaker_final_latex";
 const sourceTextarea = document.querySelector("#latex-source");
 const aiEditForm = document.querySelector("#ai-edit-form");
 const aiEditInput = document.querySelector("#ai-edit-input");
-const saveButton = document.querySelector("#save-button");
+const aiEditSubmit = document.querySelector("#ai-edit-submit");
 const downloadButton = document.querySelector("#download-button");
 const nextButton = document.querySelector("#next-button");
 const autosaveStatus = document.querySelector("#autosave-status");
@@ -75,15 +75,6 @@ aiEditForm?.addEventListener("submit", async (event) => {
   await applyAiEdit();
 });
 
-saveButton?.addEventListener("click", async () => {
-  sessionStorage.setItem(finalLatexKey, editor.getValue());
-  if (generationId) {
-    await saveLatexDraft();
-  } else {
-    setStatus(autosaveStatus, "Saved");
-  }
-});
-
 downloadButton.addEventListener("click", async () => {
   if (!currentPdfBlob && !currentPdfSourceUrl) return;
   sessionStorage.setItem(finalLatexKey, editor.getValue());
@@ -141,6 +132,8 @@ async function applyAiEdit() {
 
   const previousPlaceholder = aiEditInput.placeholder;
   aiEditInput.disabled = true;
+  if (aiEditSubmit) aiEditSubmit.disabled = true;
+  if (aiEditForm) aiEditForm.classList.add("is-working");
   aiEditInput.value = "";
   aiEditInput.placeholder = "Making changes with AI...";
   setStatus(autosaveStatus, "AI editing...");
@@ -177,6 +170,8 @@ async function applyAiEdit() {
     showCompileError("Could not apply the AI edit.", error.message);
   } finally {
     aiEditInput.disabled = false;
+    if (aiEditSubmit) aiEditSubmit.disabled = false;
+    if (aiEditForm) aiEditForm.classList.remove("is-working");
     aiEditInput.placeholder = previousPlaceholder;
     aiEditInput.focus();
   }
